@@ -43,6 +43,7 @@ public struct MusicData
             Path.GetFullPath("../../../../../Assets/NoAlbumArt/pexels-hungtran-3699436-gbcamerafilter.png"); 
 
         // Year
+        // Fallback to modified time if the condition is false
         var dateToParse = metadata.Meta(MetadataType.Date);
         Year = (TryGetYear(dateToParse, out var year) ? year : File.GetLastWriteTime(audioPath).Year.ToString())!;
         
