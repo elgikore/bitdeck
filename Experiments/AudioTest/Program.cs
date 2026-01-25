@@ -1,8 +1,9 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using AudioTest;
 using LibVLCSharp.Shared;
 
-Core.Initialize();
+var libVlc = VlcSingleton.LibVlcInstance;
 
 var mediaPlayer = new MediaPlayer(libVlc); 
 
