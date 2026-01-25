@@ -24,8 +24,7 @@ public struct MusicData
 
 
         var dateToParse = metadata.Meta(MetadataType.Date);
-        Year = (MetadataHelpers.TryGetYear(dateToParse, out var year) ? 
-            year : File.GetLastWriteTime(audioPath).Year.ToString())!;
+        Year = (TryGetYear(dateToParse, out var year) ? year : File.GetLastWriteTime(audioPath).Year.ToString())!;
         
         DurationMilliseconds = TimeSpan.FromMilliseconds(metadata.Duration);
         
@@ -52,11 +51,8 @@ public struct MusicData
         
         AudioPath = audioPath;
     }
-}
-
-internal static class MetadataHelpers
-{
-    public static bool TryGetYear(string? dateToParse, out string? year)
+    
+    private static bool TryGetYear(string? dateToParse, out string? year)
     {
         if (string.IsNullOrWhiteSpace(dateToParse))
         {
