@@ -51,7 +51,6 @@ public struct MusicData
         
         // Rate and Channels can be directly accessed because we know it is only one track
         // Map to well known names except others
-        Console.WriteLine(metadata.Tracks.Length);
         ChannelName = metadata.Tracks[0].Data.Audio.Channels switch
         {
             1 => "Mono",
