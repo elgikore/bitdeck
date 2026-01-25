@@ -3,7 +3,7 @@
 using AudioTest;
 using LibVLCSharp.Shared;
 
-var libVlc = VlcSingleton.LibVlcInstance;
+var libVlc = VlcCore.LibVlcInstance;
 
 var mediaPlayer = new MediaPlayer(libVlc); 
 
