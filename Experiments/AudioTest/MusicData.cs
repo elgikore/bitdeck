@@ -5,7 +5,7 @@ using LibVLCSharp.Shared;
 
 namespace AudioTest;
 
-public struct MusicData
+public readonly struct MusicData
 {
     public readonly string Title;
     public readonly string Artist;
