@@ -3,6 +3,8 @@
 using AudioTest;
 using LibVLCSharp.Shared;
 
+Console.OutputEncoding = System.Text.Encoding.UTF8; // Enables non-Latin chars
+
 var libVlc = VlcCore.LibVlcInstance;
 
 var mediaPlayer = new MediaPlayer(libVlc); 
