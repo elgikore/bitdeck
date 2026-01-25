@@ -1,11 +1,9 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-
-using System.Runtime.InteropServices.ComTypes;
 using LibVLCSharp.Shared;
 
 Core.Initialize();
-var libVlc = new LibVLC();
+
 var mediaPlayer = new MediaPlayer(libVlc); 
 
 // Reference: \MusicPlayer\BitDeck\Experiments\AudioTest\bin\Debug\net9.0
