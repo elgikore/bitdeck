@@ -19,17 +19,22 @@ TimeSpan totalTime = TimeSpan.FromMilliseconds(metadata.Duration);
 
 Console.WriteLine(metadata.Tracks[0].Data.Audio.Channels);
 Console.WriteLine(metadata.Tracks[0].Data.Audio.Rate);
+Console.WriteLine(metadata.Meta(MetadataType.Artist));
+Console.WriteLine(metadata.Meta(MetadataType.Album));
+Console.WriteLine(metadata.Meta(MetadataType.Title));
+Console.WriteLine(metadata.Meta(MetadataType.ArtworkURL));
+Console.WriteLine(metadata.Meta(MetadataType.Date));
 
-// using var media = new Media(libVlc, audioPath);
-// mediaPlayer.Play(media);
-//
-//
-// mediaPlayer.TimeChanged += (_, e) =>
-// {
-//     TimeSpan elapsedTime = TimeSpan.FromMilliseconds(e.Time);
-//     Console.Write($"\r{elapsedTime:mm\\:ss}/{totalTime:mm\\:ss}");
-// };
-//
-// mediaPlayer.EndReached += (_, _) => Environment.Exit(0);
-//
-// Console.ReadKey(); // Need or else it quits instantly
+using var media = new Media(libVlc, audioPath);
+mediaPlayer.Play(media);
+
+
+mediaPlayer.TimeChanged += (_, e) =>
+{
+    TimeSpan elapsedTime = TimeSpan.FromMilliseconds(e.Time);
+    Console.Write($"\r{elapsedTime:mm\\:ss}/{totalTime:mm\\:ss}");
+};
+
+mediaPlayer.EndReached += (_, _) => Environment.Exit(0);
+
+Console.ReadKey(); // Need or else it quits instantly
