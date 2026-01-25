@@ -9,7 +9,7 @@ var libVlc = new LibVLC();
 var mediaPlayer = new MediaPlayer(libVlc); 
 
 // Reference: \MusicPlayer\BitDeck\Experiments\AudioTest\bin\Debug\net9.0
-string audioPath = Path.GetFullPath("../../../../../../input.wav");
+string audioPath = Path.GetFullPath("../../../../../../input2.m4a");
 
 Console.WriteLine(audioPath);
 
@@ -27,4 +27,6 @@ mediaPlayer.TimeChanged += (_, e) =>
     Console.Write($"\r{elapsedTime:mm\\:ss}/{totalTime:mm\\:ss}");
 };
 
-Console.ReadKey();
+mediaPlayer.EndReached += (_, _) => Environment.Exit(0);
+
+Console.ReadKey(); // Need or else it quits instantly

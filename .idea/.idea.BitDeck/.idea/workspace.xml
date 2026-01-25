@@ -9,9 +9,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e6c9cb21-0175-4470-9504-cd5900d9274d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.idea.BitDeck/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.BitDeck/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/BitDeck.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/BitDeck.csproj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Experiments/AudioTest/AudioTest.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/Experiments/AudioTest/AudioTest.csproj" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Experiments/AudioTest/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Experiments/AudioTest/Program.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -112,7 +109,7 @@
       <option name="presentableId" value="Default" />
       <updated>1769328772248</updated>
       <workItem from="1769328773424" duration="2328000" />
-      <workItem from="1769331145434" duration="1596000" />
+      <workItem from="1769331145434" duration="2077000" />
     </task>
     <servers />
   </component>
