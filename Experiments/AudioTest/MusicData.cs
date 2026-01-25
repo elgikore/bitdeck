@@ -21,11 +21,17 @@ public struct MusicData
     {
         using var metadata = new Media(VlcCore.LibVlcInstance, audioPath);
         metadata.Parse();
+        
+        // Album art path
+        var albumArtPath = metadata.Meta(MetadataType.ArtworkURL);
+        AlbumArtPath = !string.IsNullOrEmpty(albumArtPath) ? albumArtPath : 
+            Path.GetFullPath("../../../../../Assets/NoAlbumArt/pexels-hungtran-3699436-gbcamerafilter.png"); 
 
-
+        // Year
         var dateToParse = metadata.Meta(MetadataType.Date);
         Year = (TryGetYear(dateToParse, out var year) ? year : File.GetLastWriteTime(audioPath).Year.ToString())!;
         
+        // Total Time
         DurationMilliseconds = TimeSpan.FromMilliseconds(metadata.Duration);
         
         // Rate and Channels can be directly accessed because we know it is only one track
@@ -43,12 +49,14 @@ public struct MusicData
             var val => $"{val} Channel"
         };
         
+        // Sample Rate as Text
         SampleRate = metadata.Tracks[0].Data.Audio.Rate switch
         {
             44100 => "44.1 kHz",
             var val => $"{val / 1000} kHz" // Integer division OK because sample rates behave predictably
         };
         
+        // Audio path for reference later
         AudioPath = audioPath;
     }
     
