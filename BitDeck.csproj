@@ -17,5 +17,7 @@
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="LibVLCSharp" Version="3.9.5" />
+        <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23" />
     </ItemGroup>
 </Project>
