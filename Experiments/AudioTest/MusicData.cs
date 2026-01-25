@@ -7,25 +7,39 @@ namespace AudioTest;
 
 public struct MusicData
 {
-    public string Title { get; init; }
-    public string Artist { get; init; }
-    public string AlbumName { get; init; }
-    public string AlbumArtPath { get; init; }
-    public string Year { get; init; }
-    public TimeSpan DurationMilliseconds { get; init; }
-    public string SampleRate { get; init; }
-    public string ChannelName { get; init; }
-    public string AudioPath { get; init; }
+    public readonly string Title;
+    public readonly string Artist;
+    public readonly string AlbumName;
+    public readonly string AlbumArtPath;
+    public readonly string Year;
+    public readonly TimeSpan DurationMilliseconds;
+    public readonly string SampleRate;
+    public readonly string ChannelName;
+    public readonly string AudioPath;
 
     public MusicData(string audioPath)
     {
         using var metadata = new Media(VlcCore.LibVlcInstance, audioPath);
-        metadata.Parse();
+        string fileName = Path.GetFileNameWithoutExtension(audioPath);
+        
+        metadata.Parse().Wait(); // Block first until finished parsing
+        
+        // Title
+        var title = metadata.Meta(MetadataType.Title); 
+        Title = !string.IsNullOrWhiteSpace(title) ? title : fileName;
+        
+        // Artist
+        var artist = metadata.Meta(MetadataType.Artist);
+        Artist = !string.IsNullOrWhiteSpace(artist) ? artist : "Unknown Artist";
+        
+        // Album name
+        var albumName = metadata.Meta(MetadataType.Album);
+        AlbumName = !string.IsNullOrWhiteSpace(albumName) ? albumName : fileName;
         
         // Album art path
         // Source: https://www.pexels.com/photo/close-up-photo-of-jellyfish-3699436/
         var albumArtPath = metadata.Meta(MetadataType.ArtworkURL);
-        AlbumArtPath = !string.IsNullOrEmpty(albumArtPath) ? albumArtPath : 
+        AlbumArtPath = !string.IsNullOrWhiteSpace(albumArtPath) ? albumArtPath : 
             Path.GetFullPath("../../../../../Assets/NoAlbumArt/pexels-hungtran-3699436-gbcamerafilter.png"); 
 
         // Year
@@ -37,6 +51,7 @@ public struct MusicData
         
         // Rate and Channels can be directly accessed because we know it is only one track
         // Map to well known names except others
+        Console.WriteLine(metadata.Tracks.Length);
         ChannelName = metadata.Tracks[0].Data.Audio.Channels switch
         {
             1 => "Mono",

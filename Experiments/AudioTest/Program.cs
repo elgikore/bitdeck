@@ -12,19 +12,19 @@ string audioPath = Path.GetFullPath("../../../../../../input2.m4a");
 
 Console.WriteLine(audioPath);
 
-using var metadata = new Media(libVlc, audioPath);
-await metadata.Parse();
-TimeSpan totalTime = TimeSpan.FromMilliseconds(metadata.Duration);
 
-Console.WriteLine(metadata.Tracks[0].Data.Audio.Channels);
-Console.WriteLine(metadata.Tracks[0].Data.Audio.Rate);
-Console.WriteLine(metadata.Meta(MetadataType.Artist));
-Console.WriteLine(metadata.Meta(MetadataType.Album));
-Console.WriteLine(metadata.Meta(MetadataType.Title));
-Console.WriteLine(metadata.Meta(MetadataType.ArtworkURL));
-Console.WriteLine(metadata.Meta(MetadataType.Date));
+var musicData = new MusicData(audioPath);
 
-using var media = new Media(libVlc, audioPath);
+TimeSpan totalTime = musicData.DurationMilliseconds;
+Console.WriteLine(musicData.Title);
+Console.WriteLine(musicData.Artist);
+Console.WriteLine(musicData.AlbumName);
+Console.WriteLine(musicData.AlbumArtPath);
+Console.WriteLine(musicData.Year);
+Console.WriteLine(musicData.SampleRate);
+Console.WriteLine(musicData.ChannelName);
+
+using var media = new Media(libVlc, musicData.AudioPath);
 mediaPlayer.Play(media);
 
 
