@@ -1,4 +1,7 @@
+using System.Text.RegularExpressions;
 using LibVLCSharp.Shared;
+
+// ReSharper disable SuggestVarOrType_BuiltInTypes
 
 namespace AudioTest;
 
@@ -18,10 +21,11 @@ public struct MusicData
     {
         using var metadata = new Media(VlcCore.LibVlcInstance, audioPath);
         metadata.Parse();
-        
-        
-        
-        
+
+
+        var dateToParse = metadata.Meta(MetadataType.Date);
+        Year = (MetadataHelpers.TryGetYear(dateToParse, out var year) ? 
+            year : File.GetLastWriteTime(audioPath).Year.ToString())!;
         
         DurationMilliseconds = TimeSpan.FromMilliseconds(metadata.Duration);
         
@@ -47,5 +51,27 @@ public struct MusicData
         };
         
         AudioPath = audioPath;
+    }
+}
+
+internal static class MetadataHelpers
+{
+    public static bool TryGetYear(string? dateToParse, out string? year)
+    {
+        if (string.IsNullOrWhiteSpace(dateToParse))
+        {
+            year = null;
+            return false;
+        }
+        
+        #pragma warning disable SYSLIB1045
+        var match = Regex.Match(dateToParse, @"\d{4}");
+        #pragma warning restore SYSLIB1045
+        
+        bool isSuccessful = match.Success;
+
+        year = isSuccessful ? match.Value : null;
+        
+        return isSuccessful;
     }
 }

@@ -20,4 +20,10 @@
         <PackageReference Include="LibVLCSharp" Version="3.9.5" />
         <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Models\" />
+      <Folder Include="ViewModels\" />
+      <Folder Include="Views\" />
+    </ItemGroup>
 </Project>
