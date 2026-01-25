@@ -19,18 +19,33 @@ public struct MusicData
         using var metadata = new Media(VlcCore.LibVlcInstance, audioPath);
         metadata.Parse();
         
+        
+        
+        
+        
+        DurationMilliseconds = TimeSpan.FromMilliseconds(metadata.Duration);
+        
+        // Rate and Channels can be directly accessed because we know it is only one track
+        // Map to well known names except others
+        ChannelName = metadata.Tracks[0].Data.Audio.Channels switch
+        {
+            1 => "Mono",
+            2 => "Stereo",
+            3 => "2.1 Surround",
+            4 => "Quad",
+            5 => "5.0 Surround",
+            6 => "5.1 Surround",
+            7 => "6.1 Surround",
+            8 => "7.1 Surround",
+            var val => $"{val} Channel"
+        };
+        
+        SampleRate = metadata.Tracks[0].Data.Audio.Rate switch
+        {
+            44100 => "44.1 kHz",
+            var val => $"{val / 1000} kHz" // Integer division OK because sample rates behave predictably
+        };
+        
+        AudioPath = audioPath;
     }
-    
-    // return channelName switch
-    // {
-    //     ChannelName.Mono => "Mono",
-    //     ChannelName.Stereo => "Stereo",
-    //     ChannelName.Surround2_1 => "2.1 Surround",
-    //     ChannelName.Quad => "Quad",
-    //     ChannelName.Surround5_0 => "5.0 Surround",
-    //     ChannelName.Surround5_1 => "5.1 Surround",
-    //     ChannelName.Surround6_1 => "6.1 Surround",
-    //     ChannelName.Surround7_1 => "7.1 Surround",
-    //     _ => throw new ArgumentOutOfRangeException(nameof(channelName), channelName, "Invalid channel name!")
-    // };
 }
