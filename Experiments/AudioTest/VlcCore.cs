@@ -2,8 +2,6 @@ namespace AudioTest;
 
 using LibVLCSharp.Shared;
 
-
-
 public sealed class VlcCore
 {
     public static readonly LibVLC LibVlcInstance;
