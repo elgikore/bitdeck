@@ -26,7 +26,7 @@ public readonly struct MusicData
         
         // Title
         var title = metadata.Meta(MetadataType.Title); 
-        Title = !string.IsNullOrWhiteSpace(title) ? title : fileName;
+        Title = !string.IsNullOrWhiteSpace(title) && title != Path.GetFileName(audioPath) ? title : fileName;
         
         // Artist
         var artist = metadata.Meta(MetadataType.Artist);
