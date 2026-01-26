@@ -10,7 +10,7 @@ var libVlc = VlcCore.LibVlcInstance;
 var mediaPlayer = new MediaPlayer(libVlc); 
 
 // Reference: \MusicPlayer\BitDeck\Experiments\AudioTest\bin\Debug\net9.0
-string audioPath = Path.GetFullPath("../../../../../../input2.m4a");
+string audioPath = Path.GetFullPath("../../../../../../input2Copy.wav");
 
 Console.WriteLine(audioPath);
 
