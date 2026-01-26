@@ -39,7 +39,7 @@ public readonly struct MusicData
         // Album art path
         // Source: https://www.pexels.com/photo/close-up-photo-of-jellyfish-3699436/
         var albumArtPath = metadata.Meta(MetadataType.ArtworkURL);
-        AlbumArtPath = !string.IsNullOrWhiteSpace(albumArtPath) ? albumArtPath : 
+        AlbumArtPath = !string.IsNullOrWhiteSpace(albumArtPath) ? new Uri(albumArtPath).LocalPath : 
             Path.GetFullPath("../../../../../Assets/NoAlbumArt/pexels-hungtran-3699436-gbcamerafilter.png"); 
 
         // Year
