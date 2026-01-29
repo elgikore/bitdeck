@@ -5,5 +5,12 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="AudioVisualizerTest.MainWindow"
         Title="AudioVisualizerTest">
-    Welcome to Avalonia!
+    <Grid RowDefinitions="*,Auto">
+        <Image x:Name="WaveformVisualizer"
+               Grid.Row="0"
+               Stretch="Uniform"
+               HorizontalAlignment="Stretch"
+               VerticalAlignment="Stretch" />
+        <Button Grid.Row="1" Content="Play Visualizer" Click="PlayButton_Click" />
+    </Grid>
 </Window>
