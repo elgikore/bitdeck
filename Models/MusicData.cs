@@ -6,7 +6,7 @@ using LibVLCSharp.Shared;
 
 namespace BitDeck.Models;
 
-public readonly struct MusicData
+public record MusicData
 {
     public readonly string Title;
     public readonly string Artist;
