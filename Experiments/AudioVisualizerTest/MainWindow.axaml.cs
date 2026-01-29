@@ -16,6 +16,8 @@ public partial class MainWindow : Window
     private readonly MediaPlayer _visualizerMediaPlayer;
     private readonly LibVLC _libVlcInstance;
     private readonly string _audioPath = Path.GetFullPath("../../../../../../input2Copy.wav");
+    private const int _numOfPoints = 50;
+    private float[] _waveformPoints = new float[_numOfPoints];
 
     public MainWindow()
     {
@@ -27,6 +29,22 @@ public partial class MainWindow : Window
         _mainMediaPlayer = new MediaPlayer(_libVlcInstance);
         _visualizerMediaPlayer = new MediaPlayer(_libVlcInstance);
         
+        // Media and visualizer synchronization
+        _mainMediaPlayer.Playing += (_, _) => _visualizerMediaPlayer.Time = _mainMediaPlayer.Time;
+        
+        _mainMediaPlayer.TimeChanged += (_, e) =>
+        {
+            long currentTime = e.Time;
+            long visualizerCurrentTime = _visualizerMediaPlayer.Time;
+            
+            if (Math.Abs(currentTime - visualizerCurrentTime) < 20) return;
+            
+            _visualizerMediaPlayer.Time = currentTime;
+        };
+
+        _mainMediaPlayer.EndReached += (_, _) => _visualizerMediaPlayer.Stop();
+        
+        // Visualizer setup
         _visualizerMediaPlayer.SetAudioFormatCallback(
             (ref IntPtr _, ref IntPtr format, ref uint rate, ref uint channels) =>
             {
@@ -44,6 +62,10 @@ public partial class MainWindow : Window
                 Marshal.FreeHGlobal(opaque);
             } 
         );
+        
+        
+        
+        
         
         double[] values = { 1.2, 3.4, 2.1, 5.0, 4.3 }; 
         Plot.Plot.Axes.Color(Colors.Transparent);
@@ -77,6 +99,7 @@ public partial class MainWindow : Window
     private void PlayButton_Click(object? sender, RoutedEventArgs e)
     {
         using var media = new Media(_libVlcInstance, _audioPath);
+        _mainMediaPlayer.Play(media);
         _visualizerMediaPlayer.Play(media);
     }
 }
