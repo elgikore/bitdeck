@@ -59,7 +59,9 @@ public partial class MainWindow : Window
         Plot.UserInputProcessor.IsEnabled = false;
         
         
-        Plot.Plot.Add.Signal(values);
+        var linePlot = Plot.Plot.Add.Signal(values);
+        linePlot.MaximumMarkerSize = 0;
+        
         Plot.Refresh();
     }
 
