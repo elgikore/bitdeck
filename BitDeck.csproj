@@ -25,4 +25,10 @@
       <Folder Include="ViewModels\" />
       <Folder Include="Views\" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="OxyPlot.Avalonia">
+        <HintPath>C:\Users\windowsnotavailable\.nuget\packages\oxyplot.avalonia\2.1.0\lib\netstandard2.0\OxyPlot.Avalonia.dll</HintPath>
+      </Reference>
+    </ItemGroup>
 </Project>

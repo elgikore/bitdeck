@@ -1,7 +1,12 @@
+using System;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using LibVLCSharp.Shared;
+using ScottPlot;
+using ScottPlot.TickGenerators;
 
 namespace AudioVisualizerTest;
 
@@ -40,7 +45,22 @@ public partial class MainWindow : Window
             } 
         );
         
+        double[] values = { 1.2, 3.4, 2.1, 5.0, 4.3 }; 
+        Plot.Plot.Axes.Color(Colors.Transparent);
         
+        Plot.Plot.HideGrid();
+        Plot.Plot.Axes.Bottom.TickGenerator = new NumericAutomatic
+        {
+            IntegerTicksOnly = true,
+            MinimumTickSpacing = 1
+        };
+        
+        Plot.Plot.Axes.AntiAlias(false);
+        Plot.UserInputProcessor.IsEnabled = false;
+        
+        
+        Plot.Plot.Add.Signal(values);
+        Plot.Refresh();
     }
 
     protected override void OnClosed(EventArgs e)
