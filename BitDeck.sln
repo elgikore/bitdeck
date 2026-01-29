@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitDeck", "BitDeck.csproj",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudioTest", "Experiments\AudioTest\AudioTest.csproj", "{92305A4D-017C-4B78-AA1B-F943A5C5B779}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudioVisualizerTest", "Experiments\AudioVisualizerTest\AudioVisualizerTest.csproj", "{B8A7C999-0530-4831-B661-E694BEF2DBCE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{92305A4D-017C-4B78-AA1B-F943A5C5B779}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{92305A4D-017C-4B78-AA1B-F943A5C5B779}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{92305A4D-017C-4B78-AA1B-F943A5C5B779}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8A7C999-0530-4831-B661-E694BEF2DBCE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8A7C999-0530-4831-B661-E694BEF2DBCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8A7C999-0530-4831-B661-E694BEF2DBCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8A7C999-0530-4831-B661-E694BEF2DBCE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
