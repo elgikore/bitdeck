@@ -4,8 +4,10 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using LibVLCSharp.Shared;
 using ScottPlot;
+using ScottPlot.Plottables;
 using ScottPlot.TickGenerators;
 
 namespace AudioVisualizerTest;
@@ -16,8 +18,15 @@ public partial class MainWindow : Window
     private readonly MediaPlayer _visualizerMediaPlayer;
     private readonly LibVLC _libVlcInstance;
     private readonly string _audioPath = Path.GetFullPath("../../../../../../input2Copy.wav");
-    private const int _numOfPoints = 50;
-    private float[] _waveformPoints = new float[_numOfPoints];
+    private const int NumOfPoints = 16384;
+    private float[] _waveformPoints = new float[NumOfPoints];
+    private int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
+                                                .Select(n => (int)n)
+                                                .ToArray();
+    
+    private Scatter _scatterPlot;
+    
+    // private const int FloatSize = sizeof(float);
 
     public MainWindow()
     {
@@ -45,32 +54,41 @@ public partial class MainWindow : Window
         _mainMediaPlayer.EndReached += (_, _) => _visualizerMediaPlayer.Stop();
         
         // Visualizer setup
-        _visualizerMediaPlayer.SetAudioFormatCallback(
-            (ref IntPtr _, ref IntPtr format, ref uint rate, ref uint channels) =>
-            {
-                format = Marshal.StringToHGlobalAnsi("FL32");
-                rate = 48000;
-                channels = 1;
-
-                return 0;
-            },
+        _visualizerMediaPlayer.SetAudioFormat("FL32", 48000, 1);
+        
+        _visualizerMediaPlayer.SetAudioCallbacks((_, samples, count, _) =>
+        {
+            var pointsCopy = new float[NumOfPoints];
             
-            opaque =>
+            unsafe
             {
-                if (opaque == IntPtr.Zero) return;
+                short* waveformPoints = (short*)samples;
+                int waveformPointsLength = (int)count;
                 
-                Marshal.FreeHGlobal(opaque);
-            } 
-        );
+                if (waveformPointsLength == 0) return;
+                
+                for (int i = 0; i < NumOfPoints; i++)
+                {
+                    int downsampleIdx = (int)(i / (float)NumOfPoints * waveformPointsLength);
+                    downsampleIdx = Math.Clamp(downsampleIdx, 0, waveformPointsLength - 1);
+                    pointsCopy[i] = waveformPoints[downsampleIdx];
+                }
+            }
+
+            Console.WriteLine($"Min: {pointsCopy.Min()}, Max: {pointsCopy.Max()}");
+            
+            Dispatcher.UIThread.Post(() =>
+            {
+                Array.Copy(pointsCopy, _waveformPoints,  NumOfPoints);
+                Plot.Plot.Axes.AutoScaleY();
+                Plot.Refresh();
+            });
+        }, null, null, null, null);
         
         
-        
-        
-        
-        double[] values = { 1.2, 3.4, 2.1, 5.0, 4.3 }; 
         Plot.Plot.Axes.Color(Colors.Transparent);
         
-        Plot.Plot.HideGrid();
+        // Plot.Plot.HideGrid();
         Plot.Plot.Axes.Bottom.TickGenerator = new NumericAutomatic
         {
             IntegerTicksOnly = true,
@@ -78,11 +96,13 @@ public partial class MainWindow : Window
         };
         
         Plot.Plot.Axes.AntiAlias(false);
+        Plot.Plot.Axes.SetLimitsY(float.MinValue, float.MaxValue);
         Plot.UserInputProcessor.IsEnabled = false;
+
+        _scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPoints);
         
-        
-        var linePlot = Plot.Plot.Add.Signal(values);
-        linePlot.MaximumMarkerSize = 0;
+        _scatterPlot.MarkerSize = 4;
+        _scatterPlot.MarkerShape = MarkerShape.FilledSquare;
         
         Plot.Refresh();
     }
@@ -101,5 +121,6 @@ public partial class MainWindow : Window
         using var media = new Media(_libVlcInstance, _audioPath);
         _mainMediaPlayer.Play(media);
         _visualizerMediaPlayer.Play(media);
+        Console.WriteLine("Now playing");
     }
 }
