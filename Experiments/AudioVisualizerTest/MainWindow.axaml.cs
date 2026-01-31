@@ -19,8 +19,9 @@ public partial class MainWindow : Window
     private readonly MediaPlayer _mainMediaPlayer;
     private readonly MediaPlayer _visualizerMediaPlayer;
     private readonly LibVLC _libVlcInstance;
-    private readonly string _audioPath = Path.GetFullPath("../../../../../../input.mp3");
+    private readonly string _audioPath = Path.GetFullPath("../../../../../../input2Copy.wav");
     private const int NumOfPoints = 256;
+    private const int NumOfSamples = 512;
     // private int _currentIndex;
     // private bool _canRedraw;
     private float[] _waveformPoints = new float[NumOfPoints];
@@ -28,8 +29,11 @@ public partial class MainWindow : Window
     private int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
                                                 .Select(n => (int)n)
                                                 .ToArray();
+
+    private bool _isAudible;
     
-    private Scatter _scatterPlot;
+    private readonly Scatter _scatterPlot;
+    private readonly DataStreamer _livePlot;
     
     // private const int FloatSize = sizeof(float);
 
@@ -48,6 +52,8 @@ public partial class MainWindow : Window
         
         _mainMediaPlayer.TimeChanged += (_, e) =>
         {
+            if (e.Time > 0) _isAudible = true;
+            
             long currentTime = e.Time;
             long visualizerCurrentTime = _visualizerMediaPlayer.Time;
             
@@ -56,7 +62,11 @@ public partial class MainWindow : Window
             _visualizerMediaPlayer.Time = currentTime;
         };
 
-        _mainMediaPlayer.EndReached += (_, _) => _visualizerMediaPlayer.Stop();
+        _mainMediaPlayer.EndReached += (_, _) =>
+        {
+            _visualizerMediaPlayer.Stop();
+            _isAudible = false;
+        };
         
         // Visualizer setup
         _visualizerMediaPlayer.SetAudioFormatCallback((ref IntPtr _, ref IntPtr _, ref uint rate,
@@ -78,6 +88,8 @@ public partial class MainWindow : Window
         
         _visualizerMediaPlayer.SetAudioCallbacks((_, samples, count, _) =>
         {
+            if (!_isAudible) return;
+            
             unsafe
             {
                 short* waveformPoints = (short*)samples;
@@ -89,7 +101,7 @@ public partial class MainWindow : Window
                 {
                     int startChunkIdx = (int)MathF.Floor((i / (_waveformPointsIdxs.Length - 1f)) * waveformPointsLength);
                     int endChunkIdx = (int)MathF.Ceiling(((i + 1f) / (_waveformPointsIdxs.Length - 1f)) * waveformPointsLength);
-
+                
                     for (int j = startChunkIdx; j < endChunkIdx; j++)
                     {
                         _waveformPoints[i] += MathF.Pow(waveformPoints[j], 2);
@@ -101,6 +113,8 @@ public partial class MainWindow : Window
                     
                     _waveformPointsNegative[i] = -1 * _waveformPoints[i];
                 }
+
+                for (int i = 0; i < waveformPointsLength; i++) _livePlot.Add(waveformPoints[i]);
             }
 
             // Console.WriteLine($"Min: {pointsCopy.Min()}, Max: {pointsCopy.Max()}");
@@ -113,8 +127,13 @@ public partial class MainWindow : Window
             //     //     .ToList()
             //     //     .ForEach(m => Plot.Plot.Remove(m));
             //     
-            //     Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
-            //     Plot.Refresh();
+            //     // Plot.Plot.Axes.AntiAlias(false);
+            //     // Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
+            //     RealPlot.Plot.Axes.AntiAlias(false);
+            //     RealPlot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
+            //     
+            //     // Plot.Refresh();
+            //     RealPlot.Refresh();
             // });
             
             
@@ -125,6 +144,8 @@ public partial class MainWindow : Window
         
         timer.Tick += (_, _) =>
         {
+            if (!_isAudible) return;
+            
             Dispatcher.UIThread.Post(() =>
             {
                 // Plot.Plot.GetPlottables<Marker>()
@@ -134,7 +155,11 @@ public partial class MainWindow : Window
                 
                 Plot.Plot.Axes.AntiAlias(false);
                 Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
+                RealPlot.Plot.Axes.AntiAlias(false);
+                RealPlot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
+                
                 Plot.Refresh();
+                RealPlot.Refresh();
             });
         };
         
@@ -170,6 +195,24 @@ public partial class MainWindow : Window
         _scatterPlot.ConnectStyle = ConnectStyle.StepHorizontal;
         
         Plot.Refresh();
+        
+        
+        // Actual Waveform
+        RealPlot.UseLayoutRounding = true;
+        RealPlot.RenderTransform = new ScaleTransform(1, 1);
+        RealPlot.Plot.Axes.Color(Colors.Transparent);
+        RealPlot.Plot.HideGrid();
+        
+        RealPlot.Plot.Axes.AntiAlias(false);
+        RealPlot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
+        RealPlot.UserInputProcessor.IsEnabled = false;
+
+        _livePlot = RealPlot.Plot.Add.DataStreamer(NumOfSamples);
+        _livePlot.AddRange(Enumerable.Repeat(0, NumOfSamples).Select(n => (double)n).ToArray());
+        _livePlot.LineWidth = 2;
+        _livePlot.ViewScrollLeft();
+        
+        RealPlot.Refresh();
     }
 
     protected override void OnClosed(EventArgs e)
