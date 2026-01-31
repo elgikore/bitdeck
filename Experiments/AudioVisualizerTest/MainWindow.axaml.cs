@@ -20,7 +20,7 @@ public partial class MainWindow : Window
     private readonly MediaPlayer _visualizerMediaPlayer;
     private readonly LibVLC _libVlcInstance;
     private readonly string _audioPath = Path.GetFullPath("../../../../../../input.mp3");
-    private const int NumOfPoints = 128;
+    private const int NumOfPoints = 256;
     // private int _currentIndex;
     // private bool _canRedraw;
     private float[] _waveformPoints = new float[NumOfPoints];
@@ -62,7 +62,7 @@ public partial class MainWindow : Window
         _visualizerMediaPlayer.SetAudioFormatCallback((ref IntPtr _, ref IntPtr _, ref uint rate,
             ref uint channels) =>
         {
-            // IntPtr format according to the docs is 4-byte char*, but reading or writing to it crashes
+            // IntPtr format according to the LibVLCSharp docs is 4-byte char*, but reading or writing to it crashes
             // because of reading/writing protected memory, even though the C API suggests that you can read or set it
             
             // Later on I learned that the format is signed 16-bit (short) because when I cast the PCM data to float,
@@ -120,7 +120,7 @@ public partial class MainWindow : Window
             
         }, null, null, null, null);
 
-        int fps = 30;
+        int fps = 60;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1f / fps) };
         
         timer.Tick += (_, _) =>
@@ -132,6 +132,7 @@ public partial class MainWindow : Window
                 //     .ToList()
                 //     .ForEach(m => Plot.Plot.Remove(m));
                 
+                Plot.Plot.Axes.AntiAlias(false);
                 Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
                 Plot.Refresh();
             });
@@ -139,34 +140,34 @@ public partial class MainWindow : Window
         
         timer.Start();
         
+        
+        // RMS Plot
         Plot.UseLayoutRounding = true;
         Plot.RenderTransform = new ScaleTransform(1, 1);
-
         Plot.Plot.Axes.Color(Colors.Transparent);
-        
         Plot.Plot.HideGrid();
-        Plot.Plot.Axes.Bottom.TickGenerator = new NumericAutomatic
-        {
-            IntegerTicksOnly = true,
-            MinimumTickSpacing = 1
-        };
         
         Plot.Plot.Axes.AntiAlias(false);
         Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
         Plot.UserInputProcessor.IsEnabled = false;
 
-        _scatterPlot = Plot.Plot.Add.ScatterPoints(_waveformPointsIdxs, _waveformPoints);
-        _scatterPlot.FillY = true;
-        _scatterPlot.FillYColor = _scatterPlot.Color.WithAlpha(.2);
+        _scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPoints);
+        // _scatterPlot.FillY = true;
+        // _scatterPlot.FillYColor = _scatterPlot.Color.WithAlpha(.2);
+        // _scatterPlot.MarkerSize = 0;
+        _scatterPlot.ConnectStyle = ConnectStyle.StepHorizontal;
+        // _scatterPlot.MarkerShape = MarkerShape.None;
+        _scatterPlot.LineWidth = 2;
         
-        _scatterPlot = Plot.Plot.Add.ScatterPoints(_waveformPointsIdxs, _waveformPointsNegative);
-        _scatterPlot.FillY = true;
-        _scatterPlot.FillYColor = _scatterPlot.Color.WithAlpha(.2);
+        _scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPointsNegative);
+        // _scatterPlot.FillY = true;
+        // _scatterPlot.FillYColor = _scatterPlot.Color.WithAlpha(.2);
         // _scatterPlot.ViewScrollLeft();
-        // _scatterPlot.LineWidth = 0;
-        
-        _scatterPlot.MarkerSize = 5;
-        _scatterPlot.MarkerShape = MarkerShape.FilledSquare;
+        _scatterPlot.LineWidth = 2;
+
+        // _scatterPlot.MarkerSize = 0;
+        // _scatterPlot.MarkerShape = MarkerShape.None;
+        _scatterPlot.ConnectStyle = ConnectStyle.StepHorizontal;
         
         Plot.Refresh();
     }
