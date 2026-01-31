@@ -16,27 +16,23 @@ namespace AudioVisualizerTest;
 
 public partial class MainWindow : Window
 {
+    // VLC specific
     private readonly MediaPlayer _mainMediaPlayer;
     private readonly MediaPlayer _visualizerMediaPlayer;
     private readonly LibVLC _libVlcInstance;
-    private readonly string _audioPath = Path.GetFullPath("../../../../../../input2Copy.wav");
-    private const int NumOfPoints = 256;
-    private const int NumOfSamples = 512;
-    // private int _currentIndex;
-    // private bool _canRedraw;
-    private float[] _waveformPoints = new float[NumOfPoints];
-    private float[] _waveformPointsNegative = new float[NumOfPoints];
-    private int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
+    
+    
+    private const int NumOfPoints = 256; // RMS
+    private const int NumOfSamples = 512; // Actual waveform
+    private readonly float[] _waveformPoints = new float[NumOfPoints];
+    private readonly float[] _waveformPointsNegative = new float[NumOfPoints];
+    private readonly int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
                                                 .Select(n => (int)n)
                                                 .ToArray();
 
     private bool _isAudible;
-    
-    private readonly Scatter _scatterPlot;
     private readonly DataStreamer _livePlot;
     
-    // private const int FloatSize = sizeof(float);
-
     public MainWindow()
     {
         InitializeComponent();
@@ -84,8 +80,6 @@ public partial class MainWindow : Window
             return 0; // return code
         }, _ => { });
         
-        // _visualizerMediaPlayer.SetAudioFormat("FL32", 48000, 1); doesnt work
-        
         _visualizerMediaPlayer.SetAudioCallbacks((_, samples, count, _) =>
         {
             if (!_isAudible) return;
@@ -114,29 +108,8 @@ public partial class MainWindow : Window
                     _waveformPointsNegative[i] = -1 * _waveformPoints[i];
                 }
 
-                for (int i = 0; i < waveformPointsLength; i++) _livePlot.Add(waveformPoints[i]);
+                for (int i = 0; i < waveformPointsLength; i++) _livePlot!.Add(waveformPoints[i]);
             }
-
-            // Console.WriteLine($"Min: {pointsCopy.Min()}, Max: {pointsCopy.Max()}");
-            // if (!_canRedraw) return;
-            
-            // Dispatcher.UIThread.Post(() =>
-            // {
-            //     // Plot.Plot.GetPlottables<Marker>()
-            //     //     .Where(m => m.X < 0)
-            //     //     .ToList()
-            //     //     .ForEach(m => Plot.Plot.Remove(m));
-            //     
-            //     // Plot.Plot.Axes.AntiAlias(false);
-            //     // Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
-            //     RealPlot.Plot.Axes.AntiAlias(false);
-            //     RealPlot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
-            //     
-            //     // Plot.Refresh();
-            //     RealPlot.Refresh();
-            // });
-            
-            
         }, null, null, null, null);
 
         int fps = 60;
@@ -176,23 +149,13 @@ public partial class MainWindow : Window
         Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
         Plot.UserInputProcessor.IsEnabled = false;
 
-        _scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPoints);
-        // _scatterPlot.FillY = true;
-        // _scatterPlot.FillYColor = _scatterPlot.Color.WithAlpha(.2);
-        // _scatterPlot.MarkerSize = 0;
-        _scatterPlot.ConnectStyle = ConnectStyle.StepHorizontal;
-        // _scatterPlot.MarkerShape = MarkerShape.None;
-        _scatterPlot.LineWidth = 2;
+        var scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPoints);
+        scatterPlot.ConnectStyle = ConnectStyle.StepHorizontal;
+        scatterPlot.LineWidth = 2;
         
-        _scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPointsNegative);
-        // _scatterPlot.FillY = true;
-        // _scatterPlot.FillYColor = _scatterPlot.Color.WithAlpha(.2);
-        // _scatterPlot.ViewScrollLeft();
-        _scatterPlot.LineWidth = 2;
-
-        // _scatterPlot.MarkerSize = 0;
-        // _scatterPlot.MarkerShape = MarkerShape.None;
-        _scatterPlot.ConnectStyle = ConnectStyle.StepHorizontal;
+        scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPointsNegative);
+        scatterPlot.LineWidth = 2;
+        scatterPlot.ConnectStyle = ConnectStyle.StepHorizontal;
         
         Plot.Refresh();
         
@@ -226,7 +189,9 @@ public partial class MainWindow : Window
 
     private void PlayButton_Click(object? sender, RoutedEventArgs e)
     {
-        using var media = new Media(_libVlcInstance, _audioPath);
+        string audioPath = Path.GetFullPath("../../../../../../input2Copy.wav");
+        
+        using var media = new Media(_libVlcInstance, audioPath);
         _mainMediaPlayer.Play(media);
         _visualizerMediaPlayer.Play(media);
         Console.WriteLine("Now playing");
