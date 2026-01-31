@@ -9,7 +9,7 @@
     <Grid RowDefinitions="*, Auto">
         <Grid RowDefinitions="*, *" ColumnDefinitions="0.25*, *" Background="White">
             <TextBlock TextAlignment="Center" VerticalAlignment="Center" Foreground="Black">
-                RMS Waveform
+                RMS Waveform (Perceived Loudness)
             </TextBlock>
             <sp:AvaPlot Grid.Row="0" Grid.Column="1" x:Name="Plot" />
             
