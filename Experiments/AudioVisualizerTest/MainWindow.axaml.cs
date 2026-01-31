@@ -112,7 +112,10 @@ public partial class MainWindow : Window
             }
         }, null, null, null, null);
 
-        int fps = 60;
+        
+        
+        // UI Thread
+        const int fps = 60;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1f / fps) };
         
         timer.Tick += (_, _) =>
@@ -121,11 +124,6 @@ public partial class MainWindow : Window
             
             Dispatcher.UIThread.Post(() =>
             {
-                // Plot.Plot.GetPlottables<Marker>()
-                //     .Where(m => m.X < 0)
-                //     .ToList()
-                //     .ForEach(m => Plot.Plot.Remove(m));
-                
                 Plot.Plot.Axes.AntiAlias(false);
                 Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
                 RealPlot.Plot.Axes.AntiAlias(false);
@@ -157,8 +155,6 @@ public partial class MainWindow : Window
         scatterPlot.LineWidth = 2;
         scatterPlot.ConnectStyle = ConnectStyle.StepHorizontal;
         
-        Plot.Refresh();
-        
         
         // Actual Waveform
         RealPlot.UseLayoutRounding = true;
@@ -174,8 +170,6 @@ public partial class MainWindow : Window
         _livePlot.AddRange(Enumerable.Repeat(0, NumOfSamples).Select(n => (double)n).ToArray());
         _livePlot.LineWidth = 2;
         _livePlot.ViewScrollLeft();
-        
-        RealPlot.Refresh();
     }
 
     protected override void OnClosed(EventArgs e)
