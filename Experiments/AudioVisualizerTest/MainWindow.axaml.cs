@@ -33,6 +33,25 @@ public partial class MainWindow : Window
     private bool _isAudible;
     private readonly DataStreamer _livePlot;
     
+    
+    // Ring buffer setup since it stutters when ALAC is played
+    private struct FloatBuffer
+    {
+        public readonly float[] Buffer { get; init; };
+        public readonly int ActualLength { get; init; }
+        private const int DEFAULT_LENGTH = 4092;
+
+        public FloatBuffer() { Buffer = new float[DEFAULT_LENGTH]; }
+    }
+    
+    private const int RING_SIZE = 4;
+    private FloatBuffer[] _ringBuffer = new FloatBuffer[RING_SIZE];
+    
+    private int _readIndex;
+    private int _writeIndex;
+    
+    
+    
     public MainWindow()
     {
         InitializeComponent();
