@@ -20,15 +20,16 @@ public partial class MainWindow : Window
     private readonly MediaPlayer _visualizerMediaPlayer;
     private readonly LibVLC _libVlcInstance;
     private readonly string _audioPath = Path.GetFullPath("../../../../../../input.mp3");
-    private const int NumOfPoints = 512;
+    private const int NumOfPoints = 128;
     // private int _currentIndex;
     // private bool _canRedraw;
-    // private float[] _waveformPoints = new float[NumOfPoints];
-    // private int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
-    //                                             .Select(n => (int)n)
-    //                                             .ToArray();
+    private float[] _waveformPoints = new float[NumOfPoints];
+    private float[] _waveformPointsNegative = new float[NumOfPoints];
+    private int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
+                                                .Select(n => (int)n)
+                                                .ToArray();
     
-    private DataStreamer _scatterPlot;
+    private Scatter _scatterPlot;
     
     // private const int FloatSize = sizeof(float);
 
@@ -83,8 +84,23 @@ public partial class MainWindow : Window
                 int waveformPointsLength = (int)count;
                 
                 if (waveformPointsLength == 0) return;
-                
-                for (int i = 0; i < waveformPointsLength; i++) _scatterPlot.Add(waveformPoints[i]);
+
+                for (int i = 0; i < _waveformPoints.Length; i++)
+                {
+                    int startChunkIdx = (int)MathF.Floor((i / (_waveformPointsIdxs.Length - 1f)) * waveformPointsLength);
+                    int endChunkIdx = (int)MathF.Ceiling(((i + 1f) / (_waveformPointsIdxs.Length - 1f)) * waveformPointsLength);
+
+                    for (int j = startChunkIdx; j < endChunkIdx; j++)
+                    {
+                        _waveformPoints[i] += MathF.Pow(waveformPoints[j], 2);
+                    }
+                    
+                    _waveformPoints[i] /= MathF.Abs(startChunkIdx - endChunkIdx);
+                    
+                    _waveformPoints[i] = MathF.Ceiling(MathF.Sqrt(_waveformPoints[i]));
+                    
+                    _waveformPointsNegative[i] = -1 * _waveformPoints[i];
+                }
             }
 
             // Console.WriteLine($"Min: {pointsCopy.Min()}, Max: {pointsCopy.Max()}");
@@ -139,9 +155,15 @@ public partial class MainWindow : Window
         Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
         Plot.UserInputProcessor.IsEnabled = false;
 
-        _scatterPlot = Plot.Plot.Add.DataStreamer(NumOfPoints);
-        _scatterPlot.ViewScrollLeft();
-        _scatterPlot.LineWidth = 0;
+        _scatterPlot = Plot.Plot.Add.ScatterPoints(_waveformPointsIdxs, _waveformPoints);
+        _scatterPlot.FillY = true;
+        _scatterPlot.FillYColor = _scatterPlot.Color.WithAlpha(.2);
+        
+        _scatterPlot = Plot.Plot.Add.ScatterPoints(_waveformPointsIdxs, _waveformPointsNegative);
+        _scatterPlot.FillY = true;
+        _scatterPlot.FillYColor = _scatterPlot.Color.WithAlpha(.2);
+        // _scatterPlot.ViewScrollLeft();
+        // _scatterPlot.LineWidth = 0;
         
         _scatterPlot.MarkerSize = 5;
         _scatterPlot.MarkerShape = MarkerShape.FilledSquare;
