@@ -4,11 +4,13 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using LibVLCSharp.Shared;
 using ScottPlot;
 using ScottPlot.Plottables;
 using ScottPlot.TickGenerators;
+using Colors = ScottPlot.Colors;
 
 namespace AudioVisualizerTest;
 
@@ -17,14 +19,16 @@ public partial class MainWindow : Window
     private readonly MediaPlayer _mainMediaPlayer;
     private readonly MediaPlayer _visualizerMediaPlayer;
     private readonly LibVLC _libVlcInstance;
-    private readonly string _audioPath = Path.GetFullPath("../../../../../../input2Copy.wav");
-    private const int NumOfPoints = 16384;
-    private float[] _waveformPoints = new float[NumOfPoints];
-    private int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
-                                                .Select(n => (int)n)
-                                                .ToArray();
+    private readonly string _audioPath = Path.GetFullPath("../../../../../../input.mp3");
+    private const int NumOfPoints = 512;
+    // private int _currentIndex;
+    // private bool _canRedraw;
+    // private float[] _waveformPoints = new float[NumOfPoints];
+    // private int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
+    //                                             .Select(n => (int)n)
+    //                                             .ToArray();
     
-    private Scatter _scatterPlot;
+    private DataStreamer _scatterPlot;
     
     // private const int FloatSize = sizeof(float);
 
@@ -54,12 +58,20 @@ public partial class MainWindow : Window
         _mainMediaPlayer.EndReached += (_, _) => _visualizerMediaPlayer.Stop();
         
         // Visualizer setup
-        _visualizerMediaPlayer.SetAudioFormat("FL32", 48000, 1);
-        
-        _visualizerMediaPlayer.SetAudioCallbacks((_, samples, count, _) =>
+        _visualizerMediaPlayer.SetAudioFormatCallback((ref IntPtr _, ref IntPtr _, ref uint rate,
+            ref uint channels) =>
         {
-            var pointsCopy = new float[NumOfPoints];
             
+            rate = 48000;
+            channels = 1;
+            
+            return 0;
+        }, _ => { });
+        
+        // _visualizerMediaPlayer.SetAudioFormat("FL32", 48000, 1);
+        
+        _visualizerMediaPlayer.SetAudioCallbacks((opaque, samples, count, _) =>
+        {
             unsafe
             {
                 short* waveformPoints = (short*)samples;
@@ -67,28 +79,51 @@ public partial class MainWindow : Window
                 
                 if (waveformPointsLength == 0) return;
                 
-                for (int i = 0; i < NumOfPoints; i++)
-                {
-                    int downsampleIdx = (int)(i / (float)NumOfPoints * waveformPointsLength);
-                    downsampleIdx = Math.Clamp(downsampleIdx, 0, waveformPointsLength - 1);
-                    pointsCopy[i] = waveformPoints[downsampleIdx];
-                }
+                for (int i = 0; i < waveformPointsLength; i++) _scatterPlot.Add(waveformPoints[i]);
             }
 
-            Console.WriteLine($"Min: {pointsCopy.Min()}, Max: {pointsCopy.Max()}");
+            // Console.WriteLine($"Min: {pointsCopy.Min()}, Max: {pointsCopy.Max()}");
+            // if (!_canRedraw) return;
             
+            // Dispatcher.UIThread.Post(() =>
+            // {
+            //     // Plot.Plot.GetPlottables<Marker>()
+            //     //     .Where(m => m.X < 0)
+            //     //     .ToList()
+            //     //     .ForEach(m => Plot.Plot.Remove(m));
+            //     
+            //     Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
+            //     Plot.Refresh();
+            // });
+            
+            
+        }, null, null, null, null);
+
+        int fps = 30;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1f / fps) };
+        
+        timer.Tick += (_, _) =>
+        {
             Dispatcher.UIThread.Post(() =>
             {
-                Array.Copy(pointsCopy, _waveformPoints,  NumOfPoints);
-                Plot.Plot.Axes.AutoScaleY();
+                // Plot.Plot.GetPlottables<Marker>()
+                //     .Where(m => m.X < 0)
+                //     .ToList()
+                //     .ForEach(m => Plot.Plot.Remove(m));
+                
+                Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
                 Plot.Refresh();
             });
-        }, null, null, null, null);
+        };
         
+        timer.Start();
         
+        Plot.UseLayoutRounding = true;
+        Plot.RenderTransform = new ScaleTransform(1, 1);
+
         Plot.Plot.Axes.Color(Colors.Transparent);
         
-        // Plot.Plot.HideGrid();
+        Plot.Plot.HideGrid();
         Plot.Plot.Axes.Bottom.TickGenerator = new NumericAutomatic
         {
             IntegerTicksOnly = true,
@@ -96,12 +131,14 @@ public partial class MainWindow : Window
         };
         
         Plot.Plot.Axes.AntiAlias(false);
-        Plot.Plot.Axes.SetLimitsY(float.MinValue, float.MaxValue);
+        Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
         Plot.UserInputProcessor.IsEnabled = false;
 
-        _scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPoints);
+        _scatterPlot = Plot.Plot.Add.DataStreamer(NumOfPoints);
+        _scatterPlot.ViewScrollLeft();
+        _scatterPlot.LineWidth = 0;
         
-        _scatterPlot.MarkerSize = 4;
+        _scatterPlot.MarkerSize = 5;
         _scatterPlot.MarkerShape = MarkerShape.FilledSquare;
         
         Plot.Refresh();
