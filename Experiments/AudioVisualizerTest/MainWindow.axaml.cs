@@ -75,7 +75,7 @@ public partial class MainWindow : Window
         
         // _visualizerMediaPlayer.SetAudioFormat("FL32", 48000, 1); doesnt work
         
-        _visualizerMediaPlayer.SetAudioCallbacks((opaque, samples, count, _) =>
+        _visualizerMediaPlayer.SetAudioCallbacks((_, samples, count, _) =>
         {
             unsafe
             {
