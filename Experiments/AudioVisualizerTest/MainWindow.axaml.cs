@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -24,6 +25,7 @@ public partial class MainWindow : Window
     
     private const int NumOfPoints = 256; // RMS
     private const int NumOfSamples = 512; // Actual waveform
+    private const float SignedInt16Normalizer = -1 * short.MinValue;
     private readonly float[] _waveformPoints = new float[NumOfPoints];
     private readonly float[] _waveformPointsNegative = new float[NumOfPoints];
     private readonly int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
@@ -35,9 +37,9 @@ public partial class MainWindow : Window
     
     
     // Ring buffer setup since it stutters when ALAC is played
-    private struct FloatBuffer
+    private class FloatBuffer
     {
-        public readonly float[] Buffer { get; init; }
+        public float[] Buffer { get; }
         public int ActualLength { get; set; }
         private const int DefaultLength = 4092;
 
@@ -45,7 +47,7 @@ public partial class MainWindow : Window
     }
     
     private const int RingSize = 4;
-    private readonly FloatBuffer[] _ringBuffer = new FloatBuffer[RingSize];
+    private readonly FloatBuffer[] _ringBuffer = [new(), new(), new(), new()];
     
     private int _readIndex;
     private int _writeIndex;
@@ -55,10 +57,10 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Core.Initialize();
         
+        //Initialize VLC
+        Core.Initialize();
         _libVlcInstance = new LibVLC();
-
         _mainMediaPlayer = new MediaPlayer(_libVlcInstance);
         _visualizerMediaPlayer = new MediaPlayer(_libVlcInstance);
         
@@ -113,42 +115,32 @@ public partial class MainWindow : Window
                 int samplePointsLength = (int)count;
                 var writeBuffer = _ringBuffer[_writeIndex];
                 
-                if (samplePointsLength == 0) return;
+                if (samplePoints == null || samplePointsLength == 0) return;
 
-                for (int i = 0; i < samplePointsLength; i++) writeBuffer.Buffer[i] = samplePoints[i];
+                for (int i = 0; i < samplePointsLength; i++)
+                {
+                    writeBuffer.Buffer[i] = samplePoints[i] / SignedInt16Normalizer;
+                }
 
                 writeBuffer.ActualLength = samplePointsLength;
-
-                // for (int i = 0; i < _waveformPoints.Length; i++)
-                // {
-                //     int startChunkIdx = (int)MathF.Floor((i / (_waveformPointsIdxs.Length - 1f)) * waveformPointsLength);
-                //     int endChunkIdx = (int)MathF.Ceiling(((i + 1f) / (_waveformPointsIdxs.Length - 1f)) * waveformPointsLength);
-                //
-                //     for (int j = startChunkIdx; j < endChunkIdx; j++)
-                //     {
-                //         _waveformPoints[i] += MathF.Pow(waveformPoints[j], 2);
-                //     }
-                //     
-                //     _waveformPoints[i] /= MathF.Abs(startChunkIdx - endChunkIdx);
-                //     
-                //     _waveformPoints[i] = MathF.Ceiling(MathF.Sqrt(_waveformPoints[i]));
-                //     
-                //     _waveformPointsNegative[i] = -1 * _waveformPoints[i];
-                // }
-                //
-                // for (int i = 0; i < waveformPointsLength; i++) _livePlot!.Add(waveformPoints[i]);
+                
+                Volatile.Write(ref _writeIndex, nextWriteIdx);
             }
         }, null, null, null, null);
 
         
         
         // UI Thread
-        const int fps = 60;
+        const int fps = 30;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1f / fps) };
         
         timer.Tick += (_, _) =>
         {
-            if (!_isAudible) return;
+            int writeIdx = Volatile.Read(ref _writeIndex);
+            
+            if (!_isAudible || _readIndex == writeIdx) return;
+            
+            CalculateRms();
             
             Dispatcher.UIThread.Post(() =>
             {
@@ -198,6 +190,32 @@ public partial class MainWindow : Window
         _livePlot.AddRange(Enumerable.Repeat(0, NumOfSamples).Select(n => (double)n).ToArray());
         _livePlot.LineWidth = 2;
         _livePlot.ViewScrollLeft();
+    }
+
+    private void CalculateRms()
+    {
+        var readBuffer = _ringBuffer[_readIndex];
+        int chunkSize = (int)Math.Ceiling((float)readBuffer.ActualLength / NumOfPoints);
+
+        for (int i = 0; i < NumOfPoints; i++)
+        {
+            int startIdx = i * chunkSize;
+            int endIdx = Math.Min((i + 1) * chunkSize, readBuffer.ActualLength - 1);
+            
+            float meanSquare = readBuffer.Buffer[startIdx..endIdx]
+                .Select(sample => sample * sample)
+                .Average();
+
+            _waveformPoints[i] = MathF.Sqrt(meanSquare);
+            _waveformPointsNegative[i] = -1 * _waveformPoints[i];
+        }
+    }
+
+    private void AddRawSampleWaveform()
+    {
+        var readBuffer = _ringBuffer[_readIndex];
+        
+        _livePlot.AddRange(readBuffer.Buffer.Select(sample => (double)sample).ToArray());
     }
 
     protected override void OnClosed(EventArgs e)
