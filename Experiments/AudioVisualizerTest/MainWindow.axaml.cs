@@ -61,14 +61,19 @@ public partial class MainWindow : Window
         _visualizerMediaPlayer.SetAudioFormatCallback((ref IntPtr _, ref IntPtr _, ref uint rate,
             ref uint channels) =>
         {
+            // IntPtr format according to the docs is 4-byte char*, but reading or writing to it crashes
+            // because of reading/writing protected memory, even though the C API suggests that you can read or set it
+            
+            // Later on I learned that the format is signed 16-bit (short) because when I cast the PCM data to float,
+            // I get garbage values. Casting it to short makes the waveform sane
             
             rate = 48000;
             channels = 1;
             
-            return 0;
+            return 0; // return code
         }, _ => { });
         
-        // _visualizerMediaPlayer.SetAudioFormat("FL32", 48000, 1);
+        // _visualizerMediaPlayer.SetAudioFormat("FL32", 48000, 1); doesnt work
         
         _visualizerMediaPlayer.SetAudioCallbacks((opaque, samples, count, _) =>
         {
