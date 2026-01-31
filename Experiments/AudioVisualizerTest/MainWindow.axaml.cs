@@ -37,15 +37,15 @@ public partial class MainWindow : Window
     // Ring buffer setup since it stutters when ALAC is played
     private struct FloatBuffer
     {
-        public readonly float[] Buffer { get; init; };
-        public readonly int ActualLength { get; init; }
-        private const int DEFAULT_LENGTH = 4092;
+        public readonly float[] Buffer { get; init; }
+        public int ActualLength { get; set; }
+        private const int DefaultLength = 4092;
 
-        public FloatBuffer() { Buffer = new float[DEFAULT_LENGTH]; }
+        public FloatBuffer() { Buffer = new float[DefaultLength]; }
     }
     
-    private const int RING_SIZE = 4;
-    private FloatBuffer[] _ringBuffer = new FloatBuffer[RING_SIZE];
+    private const int RingSize = 4;
+    private readonly FloatBuffer[] _ringBuffer = new FloatBuffer[RingSize];
     
     private int _readIndex;
     private int _writeIndex;
@@ -103,31 +103,40 @@ public partial class MainWindow : Window
         {
             if (!_isAudible) return;
             
+            int nextWriteIdx = (_writeIndex + 1) % RingSize;
+            
+            if (nextWriteIdx == _readIndex) _readIndex = (_readIndex + 1) % RingSize;
+            
             unsafe
             {
-                short* waveformPoints = (short*)samples;
-                int waveformPointsLength = (int)count;
+                short* samplePoints = (short*)samples;
+                int samplePointsLength = (int)count;
+                var writeBuffer = _ringBuffer[_writeIndex];
                 
-                if (waveformPointsLength == 0) return;
+                if (samplePointsLength == 0) return;
 
-                for (int i = 0; i < _waveformPoints.Length; i++)
-                {
-                    int startChunkIdx = (int)MathF.Floor((i / (_waveformPointsIdxs.Length - 1f)) * waveformPointsLength);
-                    int endChunkIdx = (int)MathF.Ceiling(((i + 1f) / (_waveformPointsIdxs.Length - 1f)) * waveformPointsLength);
-                
-                    for (int j = startChunkIdx; j < endChunkIdx; j++)
-                    {
-                        _waveformPoints[i] += MathF.Pow(waveformPoints[j], 2);
-                    }
-                    
-                    _waveformPoints[i] /= MathF.Abs(startChunkIdx - endChunkIdx);
-                    
-                    _waveformPoints[i] = MathF.Ceiling(MathF.Sqrt(_waveformPoints[i]));
-                    
-                    _waveformPointsNegative[i] = -1 * _waveformPoints[i];
-                }
+                for (int i = 0; i < samplePointsLength; i++) writeBuffer.Buffer[i] = samplePoints[i];
 
-                for (int i = 0; i < waveformPointsLength; i++) _livePlot!.Add(waveformPoints[i]);
+                writeBuffer.ActualLength = samplePointsLength;
+
+                // for (int i = 0; i < _waveformPoints.Length; i++)
+                // {
+                //     int startChunkIdx = (int)MathF.Floor((i / (_waveformPointsIdxs.Length - 1f)) * waveformPointsLength);
+                //     int endChunkIdx = (int)MathF.Ceiling(((i + 1f) / (_waveformPointsIdxs.Length - 1f)) * waveformPointsLength);
+                //
+                //     for (int j = startChunkIdx; j < endChunkIdx; j++)
+                //     {
+                //         _waveformPoints[i] += MathF.Pow(waveformPoints[j], 2);
+                //     }
+                //     
+                //     _waveformPoints[i] /= MathF.Abs(startChunkIdx - endChunkIdx);
+                //     
+                //     _waveformPoints[i] = MathF.Ceiling(MathF.Sqrt(_waveformPoints[i]));
+                //     
+                //     _waveformPointsNegative[i] = -1 * _waveformPoints[i];
+                // }
+                //
+                // for (int i = 0; i < waveformPointsLength; i++) _livePlot!.Add(waveformPoints[i]);
             }
         }, null, null, null, null);
 
