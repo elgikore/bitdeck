@@ -33,6 +33,7 @@ public partial class MainWindow : Window
                                                 .ToArray();
 
     private bool _isAudible;
+    // private bool _isTimerStarted;
     private readonly DataStreamer _livePlot;
     
     
@@ -63,6 +64,7 @@ public partial class MainWindow : Window
         _libVlcInstance = new LibVLC();
         _mainMediaPlayer = new MediaPlayer(_libVlcInstance);
         _visualizerMediaPlayer = new MediaPlayer(_libVlcInstance);
+        
         
         // Media and visualizer synchronization
         _mainMediaPlayer.Playing += (_, _) => _visualizerMediaPlayer.Time = _mainMediaPlayer.Time;
@@ -124,8 +126,10 @@ public partial class MainWindow : Window
 
                 writeBuffer.ActualLength = samplePointsLength;
                 
-                Volatile.Write(ref _writeIndex, nextWriteIdx);
+                
             }
+
+            Volatile.Write(ref _writeIndex, nextWriteIdx);
         }, null, null, null, null);
 
         
@@ -136,18 +140,24 @@ public partial class MainWindow : Window
         
         timer.Tick += (_, _) =>
         {
+            if (!_isAudible) return;
+            
             int writeIdx = Volatile.Read(ref _writeIndex);
             
-            if (!_isAudible || _readIndex == writeIdx) return;
-            
-            CalculateRms();
+            // Exhaust buffer
+            while (_readIndex != writeIdx)
+            {
+                CalculateRms(); 
+                AddRawSampleWaveform(); 
+                _readIndex = (_readIndex + 1) % RingSize;
+            }
             
             Dispatcher.UIThread.Post(() =>
             {
                 Plot.Plot.Axes.AntiAlias(false);
-                Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
+                Plot.Plot.Axes.SetLimitsY(-1, 1);
                 RealPlot.Plot.Axes.AntiAlias(false);
-                RealPlot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
+                RealPlot.Plot.Axes.SetLimitsY(-1, 1);
                 
                 Plot.Refresh();
                 RealPlot.Refresh();
@@ -157,6 +167,7 @@ public partial class MainWindow : Window
         timer.Start();
         
         
+        
         // RMS Plot
         Plot.UseLayoutRounding = true;
         Plot.RenderTransform = new ScaleTransform(1, 1);
@@ -164,7 +175,7 @@ public partial class MainWindow : Window
         Plot.Plot.HideGrid();
         
         Plot.Plot.Axes.AntiAlias(false);
-        Plot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
+        Plot.Plot.Axes.SetLimitsY(-1, 1);
         Plot.UserInputProcessor.IsEnabled = false;
 
         var scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPoints);
@@ -183,7 +194,7 @@ public partial class MainWindow : Window
         RealPlot.Plot.HideGrid();
         
         RealPlot.Plot.Axes.AntiAlias(false);
-        RealPlot.Plot.Axes.SetLimitsY(short.MinValue, short.MaxValue);
+        RealPlot.Plot.Axes.SetLimitsY(-1, 1);
         RealPlot.UserInputProcessor.IsEnabled = false;
 
         _livePlot = RealPlot.Plot.Add.DataStreamer(NumOfSamples);
@@ -195,27 +206,45 @@ public partial class MainWindow : Window
     private void CalculateRms()
     {
         var readBuffer = _ringBuffer[_readIndex];
+        var readBufferAsSpan = readBuffer.Buffer.AsSpan(0, readBuffer.ActualLength);
         int chunkSize = (int)Math.Ceiling((float)readBuffer.ActualLength / NumOfPoints);
+        
 
         for (int i = 0; i < NumOfPoints; i++)
         {
             int startIdx = i * chunkSize;
             int endIdx = Math.Min((i + 1) * chunkSize, readBuffer.ActualLength - 1);
-            
-            float meanSquare = readBuffer.Buffer[startIdx..endIdx]
-                .Select(sample => sample * sample)
-                .Average();
 
-            _waveformPoints[i] = MathF.Sqrt(meanSquare);
+            // Don't produce slices once the startIdx is larger or equal to readBuffer length
+            // Prevents NaNs that crash the whole UI
+            if (startIdx >= readBufferAsSpan.Length)
+            {
+                _waveformPoints[i] = 0; 
+                _waveformPointsNegative[i] = 0; 
+                continue;
+            }
+            
+            var slice = readBufferAsSpan[startIdx..endIdx];
+            
+            float sumOfSquares = 0;
+            
+            foreach (var sample in slice) sumOfSquares += sample * sample;
+
+            _waveformPoints[i] = MathF.Sqrt(sumOfSquares / slice.Length);
             _waveformPointsNegative[i] = -1 * _waveformPoints[i];
+            
         }
     }
 
     private void AddRawSampleWaveform()
     {
-        var readBuffer = _ringBuffer[_readIndex];
+        // Don't ever use LINQ in tight loops or insanely fast callbacks because it creates a big overhead
+        // and tons of copies per stage
         
-        _livePlot.AddRange(readBuffer.Buffer.Select(sample => (double)sample).ToArray());
+        var readBuffer = _ringBuffer[_readIndex];
+        var readBufferAsSpan = readBuffer.Buffer.AsSpan(0, readBuffer.ActualLength);    
+
+        foreach (var sample in readBufferAsSpan) _livePlot.Add(sample);
     }
 
     protected override void OnClosed(EventArgs e)
