@@ -33,7 +33,6 @@ public partial class MainWindow : Window
                                                 .ToArray();
 
     private bool _isAudible;
-    // private bool _isTimerStarted;
     private readonly DataStreamer _livePlot;
     
     
@@ -258,7 +257,7 @@ public partial class MainWindow : Window
 
     private void PlayButton_Click(object? sender, RoutedEventArgs e)
     {
-        string audioPath = Path.GetFullPath("../../../../../../input2Copy.wav");
+        string audioPath = Path.GetFullPath("../../../../../../input3.mp3");
         
         using var media = new Media(_libVlcInstance, audioPath);
         _mainMediaPlayer.Play(media);
