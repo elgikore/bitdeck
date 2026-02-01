@@ -34,6 +34,7 @@ public partial class MainWindow : Window
 
     private bool _isAudible;
     private readonly DataStreamer _livePlot;
+    private int _rmsGraphXLimit;
     
     
     // Ring buffer setup since it stutters when ALAC is played
@@ -58,6 +59,9 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         
+        // Initialize RMS graph limit
+        _rmsGraphXLimit = _waveformPoints.Length;
+        
         //Initialize VLC
         Core.Initialize();
         _libVlcInstance = new LibVLC();
@@ -74,6 +78,8 @@ public partial class MainWindow : Window
             
             long currentTime = e.Time;
             long visualizerCurrentTime = _visualizerMediaPlayer.Time;
+
+            Console.WriteLine($"delay = {Math.Abs(currentTime - visualizerCurrentTime) }");
             
             if (Math.Abs(currentTime - visualizerCurrentTime) < 20) return;
             
@@ -155,6 +161,7 @@ public partial class MainWindow : Window
             {
                 Plot.Plot.Axes.AntiAlias(false);
                 Plot.Plot.Axes.SetLimitsY(-1, 1);
+                Plot.Plot.Axes.SetLimitsX(1, _rmsGraphXLimit);
                 RealPlot.Plot.Axes.AntiAlias(false);
                 RealPlot.Plot.Axes.SetLimitsY(-1, 1);
                 
@@ -175,6 +182,7 @@ public partial class MainWindow : Window
         
         Plot.Plot.Axes.AntiAlias(false);
         Plot.Plot.Axes.SetLimitsY(-1, 1);
+        Plot.Plot.Axes.SetLimitsX(1, _rmsGraphXLimit);
         Plot.UserInputProcessor.IsEnabled = false;
 
         var scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPoints);
@@ -207,6 +215,7 @@ public partial class MainWindow : Window
         var readBuffer = _ringBuffer[_readIndex];
         var readBufferAsSpan = readBuffer.Buffer.AsSpan(0, readBuffer.ActualLength);
         int chunkSize = (int)Math.Ceiling((float)readBuffer.ActualLength / NumOfPoints);
+        bool isStartIdxMoreThanBufferLength = false;
         
 
         for (int i = 0; i < NumOfPoints; i++)
@@ -218,6 +227,12 @@ public partial class MainWindow : Window
             // Prevents NaNs that crash the whole UI
             if (startIdx >= readBufferAsSpan.Length)
             {
+                if (!isStartIdxMoreThanBufferLength)
+                {
+                    isStartIdxMoreThanBufferLength = true;
+                    _rmsGraphXLimit = i + 1; // Use the current index to clamp since i is from NumOfPoint
+                }
+                
                 _waveformPoints[i] = 0; 
                 _waveformPointsNegative[i] = 0; 
                 continue;
