@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Logging;
 using Avalonia.Media;
 using Avalonia.Threading;
 using LibVLCSharp.Shared;
@@ -74,16 +75,17 @@ public partial class MainWindow : Window
         
         _mainMediaPlayer.TimeChanged += (_, e) =>
         {
-            if (e.Time > 0) _isAudible = true;
-            
             long currentTime = e.Time;
             long visualizerCurrentTime = _visualizerMediaPlayer.Time;
+            
+            if (e.Time > 0) _isAudible = true;
 
-            Console.WriteLine($"delay = {Math.Abs(currentTime - visualizerCurrentTime) }");
+            
             
             if (Math.Abs(currentTime - visualizerCurrentTime) < 20) return;
             
             _visualizerMediaPlayer.Time = currentTime;
+            Console.WriteLine($"Currenttime = {currentTime}, visualizerTime = {visualizerCurrentTime}, delay = {Math.Abs(currentTime - visualizerCurrentTime) }");
         };
 
         _mainMediaPlayer.EndReached += (_, _) =>
@@ -108,7 +110,7 @@ public partial class MainWindow : Window
             return 0; // return code
         }, _ => { });
         
-        _visualizerMediaPlayer.SetAudioCallbacks((_, samples, count, _) =>
+        _visualizerMediaPlayer.SetAudioCallbacks((_, samples, count, pts) =>
         {
             if (!_isAudible) return;
             
@@ -119,7 +121,7 @@ public partial class MainWindow : Window
             unsafe
             {
                 short* samplePoints = (short*)samples;
-                int samplePointsLength = (int)count;
+                int samplePointsLength = (int)count; // Can use as is because mono
                 var writeBuffer = _ringBuffer[_writeIndex];
                 
                 if (samplePoints == null || samplePointsLength == 0) return;
@@ -272,11 +274,13 @@ public partial class MainWindow : Window
 
     private void PlayButton_Click(object? sender, RoutedEventArgs e)
     {
-        string audioPath = Path.GetFullPath("../../../../../../input3.mp3");
+        string audioPath = Path.GetFullPath("../../../../../../input.mp3");
         
         using var media = new Media(_libVlcInstance, audioPath);
+        
         _mainMediaPlayer.Play(media);
         _visualizerMediaPlayer.Play(media);
+        
         Console.WriteLine("Now playing");
     }
 }
