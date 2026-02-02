@@ -32,6 +32,8 @@ public partial class MainWindow : Window
     private readonly int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
                                                 .Select(n => (int)n)
                                                 .ToArray();
+    
+    private readonly float[] _downmixedMono = new float[5500]; // 5500 samples in case vlc sends a lot of samples
 
     private bool _isAudible;
     private readonly DataStreamer _livePlot;
@@ -43,7 +45,7 @@ public partial class MainWindow : Window
     {
         public float[] Buffer { get; } = new float[DefaultLength];
         public int ActualLength { get; set; }
-        private const int DefaultLength = 4092;
+        private const int DefaultLength = 8192;
     }
     
     private const int RingSize = 4;
@@ -79,13 +81,14 @@ public partial class MainWindow : Window
             (ref IntPtr _, ref IntPtr _, ref uint _, ref uint _) => 0, // Use format as is (return code 0)
             _ => { });
         
-        _mainMediaPlayer.SetAudioCallbacks((_, samples, count, pts) =>
+        _mainMediaPlayer.SetAudioCallbacks((_, samples, count, _) =>
         {
             if (!_isAudible) return;
             
             int nextWriteIdx = (_writeIndex + 1) % RingSize;
             
-            if (nextWriteIdx == _readIndex) _readIndex = (_readIndex + 1) % RingSize;
+            // Overwrite when ring buffer is full, no if check needed
+            // writeIndex is always one step ahead of readIndex
             
             var writeBuffer = _ringBuffer[_writeIndex];
             
@@ -100,15 +103,12 @@ public partial class MainWindow : Window
                 {
                     writeBuffer.Buffer[i] = samplePoints[i] / SignedInt16Normalizer;
                 }
-
+                
                 writeBuffer.ActualLength = samplePointsLength;
+                Volatile.Write(ref _writeIndex, nextWriteIdx);
             }
 
-            // Console.WriteLine("HI");
-            
             _audioEngine?.Send(writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength));
-
-            Volatile.Write(ref _writeIndex, nextWriteIdx);
         }, null, null, null, null);
 
         
@@ -126,9 +126,12 @@ public partial class MainWindow : Window
             // Exhaust buffer
             while (_readIndex != writeIdx)
             {
+                DownmixToMonoForVisualization();
                 CalculateRms(); 
                 AddRawSampleWaveform(); 
-                _readIndex = (_readIndex + 1) % RingSize;
+                
+                int nextReadIndex = (_readIndex + 1) % RingSize;
+                Volatile.Write(ref _readIndex, nextReadIndex);
             }
             
             Dispatcher.UIThread.Post(() =>
@@ -184,22 +187,44 @@ public partial class MainWindow : Window
         _livePlot.ViewScrollLeft();
     }
 
-    private void CalculateRms()
+    private void DownmixToMonoForVisualization()
     {
         var readBuffer = _ringBuffer[_readIndex];
         var readBufferAsSpan = readBuffer.Buffer.AsSpan(0, readBuffer.ActualLength);
-        int chunkSize = (int)Math.Ceiling((float)readBuffer.ActualLength / NumOfPoints);
+        int sampleCount = readBufferAsSpan.Length / _channels;
+        
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float sum = 0f;
+            int originalIdx = _channels * i;
+
+            for (int channel = 0; channel < _channels; channel++)
+            {
+                // Console.WriteLine(readBufferAsSpan[originalIdx + channel]);
+                sum += readBufferAsSpan[originalIdx + channel];
+            }
+        
+            _downmixedMono[i] = sum / _channels;
+        }
+    }
+
+    private void CalculateRms()
+    {
+        var monoActualLength = _ringBuffer[_readIndex].ActualLength /  _channels;
+        
+        var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);
+        int chunkSize = (int)Math.Ceiling((float)downmixedMonoAsSpan.Length/ NumOfPoints);
         bool isStartIdxMoreThanBufferLength = false;
         
 
         for (int i = 0; i < NumOfPoints; i++)
         {
             int startIdx = i * chunkSize;
-            int endIdx = Math.Min((i + 1) * chunkSize, readBuffer.ActualLength - 1);
+            int endIdx = Math.Min((i + 1) * chunkSize, downmixedMonoAsSpan.Length - 1);
 
             // Don't produce slices once the startIdx is larger or equal to readBuffer length
             // Prevents NaNs that crash the whole UI
-            if (startIdx >= readBufferAsSpan.Length)
+            if (startIdx >= downmixedMonoAsSpan.Length)
             {
                 if (!isStartIdxMoreThanBufferLength)
                 {
@@ -212,7 +237,7 @@ public partial class MainWindow : Window
                 continue;
             }
             
-            var slice = readBufferAsSpan[startIdx..endIdx];
+            var slice = downmixedMonoAsSpan[startIdx..endIdx];
             
             float sumOfSquares = 0;
             
@@ -220,7 +245,6 @@ public partial class MainWindow : Window
 
             _waveformPoints[i] = MathF.Sqrt(sumOfSquares / slice.Length);
             _waveformPointsNegative[i] = -1 * _waveformPoints[i];
-            
         }
     }
 
@@ -229,10 +253,11 @@ public partial class MainWindow : Window
         // Don't ever use LINQ in tight loops or insanely fast callbacks because it creates a big overhead
         // and tons of copies per stage
         
-        var readBuffer = _ringBuffer[_readIndex];
-        var readBufferAsSpan = readBuffer.Buffer.AsSpan(0, readBuffer.ActualLength);    
+        var monoActualLength = _ringBuffer[_readIndex].ActualLength /  _channels;
+        
+        var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);    
 
-        foreach (var sample in readBufferAsSpan) _livePlot.Add(sample);
+        foreach (var sample in downmixedMonoAsSpan) _livePlot.Add(sample);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -246,7 +271,7 @@ public partial class MainWindow : Window
 
     private void PlayButton_Click(object? sender, RoutedEventArgs e)
     {
-        string audioPath = Path.GetFullPath("../../../../../../input.mp3");
+        string audioPath = Path.GetFullPath("../../../../../../input2.m4a");
         
         using var mediaMeta = new Media(_libVlcInstance, audioPath);
         mediaMeta.Parse().Wait();
