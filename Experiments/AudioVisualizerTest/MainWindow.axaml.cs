@@ -1,17 +1,15 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Logging;
 using Avalonia.Media;
 using Avalonia.Threading;
 using LibVLCSharp.Shared;
+using Ownaudio.Core;
 using ScottPlot;
 using ScottPlot.Plottables;
-using ScottPlot.TickGenerators;
 using Colors = ScottPlot.Colors;
 
 namespace AudioVisualizerTest;
@@ -20,8 +18,10 @@ public partial class MainWindow : Window
 {
     // VLC specific
     private readonly MediaPlayer _mainMediaPlayer;
-    private readonly MediaPlayer _visualizerMediaPlayer;
     private readonly LibVLC _libVlcInstance;
+    
+    // PCM Player
+    private IAudioEngine? _audioEngine;
     
     
     private const int NumOfPoints = 256; // RMS
@@ -51,9 +51,9 @@ public partial class MainWindow : Window
     
     private int _readIndex;
     private int _writeIndex;
-    
-    
-    
+    private int _channels;
+
+
     public MainWindow()
     {
         InitializeComponent();
@@ -65,50 +65,21 @@ public partial class MainWindow : Window
         Core.Initialize();
         _libVlcInstance = new LibVLC();
         _mainMediaPlayer = new MediaPlayer(_libVlcInstance);
-        _visualizerMediaPlayer = new MediaPlayer(_libVlcInstance);
         
+        // Media player
+        _mainMediaPlayer.Playing += (_, _) => _isAudible = true;
         
-        // Media and visualizer synchronization
-        _mainMediaPlayer.Playing += (_, _) => _visualizerMediaPlayer.Time = _mainMediaPlayer.Time;
-        
-        _mainMediaPlayer.TimeChanged += (_, e) =>
-        {
-            long currentTime = e.Time;
-            long visualizerCurrentTime = _visualizerMediaPlayer.Time;
-            
-            if (e.Time > 0) _isAudible = true;
-
-            
-            
-            if (Math.Abs(currentTime - visualizerCurrentTime) < 20) return;
-            
-            _visualizerMediaPlayer.Time = currentTime;
-            Console.WriteLine($"Currenttime = {currentTime}, visualizerTime = {visualizerCurrentTime}, delay = {Math.Abs(currentTime - visualizerCurrentTime) }");
-        };
-
         _mainMediaPlayer.EndReached += (_, _) =>
         {
-            _visualizerMediaPlayer.Stop();
+            _audioEngine?.Stop();
             _isAudible = false;
         };
         
-        // Visualizer setup
-        _visualizerMediaPlayer.SetAudioFormatCallback((ref IntPtr _, ref IntPtr _, ref uint rate,
-            ref uint channels) =>
-        {
-            // IntPtr format according to the LibVLCSharp docs is 4-byte char*, but reading or writing to it crashes
-            // because of reading/writing protected memory, even though the C API suggests that you can read or set it
-            
-            // Later on I learned that the format is signed 16-bit (short) because when I cast the PCM data to float,
-            // I get garbage values. Casting it to short makes the waveform sane
-            
-            rate = 48000;
-            channels = 1;
-            
-            return 0; // return code
-        }, _ => { });
+        _mainMediaPlayer.SetAudioFormatCallback(
+            (ref IntPtr _, ref IntPtr _, ref uint _, ref uint _) => 0, // Use format as is (return code 0)
+            _ => { });
         
-        _visualizerMediaPlayer.SetAudioCallbacks((_, samples, count, pts) =>
+        _mainMediaPlayer.SetAudioCallbacks((_, samples, count, pts) =>
         {
             if (!_isAudible) return;
             
@@ -116,11 +87,12 @@ public partial class MainWindow : Window
             
             if (nextWriteIdx == _readIndex) _readIndex = (_readIndex + 1) % RingSize;
             
+            var writeBuffer = _ringBuffer[_writeIndex];
+            
             unsafe
             {
                 short* samplePoints = (short*)samples;
-                int samplePointsLength = (int)count; // Can use as is because mono
-                var writeBuffer = _ringBuffer[_writeIndex];
+                int samplePointsLength = (int)count * _channels; // Can use as is because mono
                 
                 if (samplePoints == null || samplePointsLength == 0) return;
 
@@ -130,9 +102,11 @@ public partial class MainWindow : Window
                 }
 
                 writeBuffer.ActualLength = samplePointsLength;
-                
-                
             }
+
+            // Console.WriteLine("HI");
+            
+            _audioEngine?.Send(writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength));
 
             Volatile.Write(ref _writeIndex, nextWriteIdx);
         }, null, null, null, null);
@@ -264,8 +238,8 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _mainMediaPlayer.Dispose();
-        _visualizerMediaPlayer.Dispose();
         _libVlcInstance.Dispose();
+       _audioEngine?.Dispose();
         
         base.OnClosed(e);
     }
@@ -274,10 +248,24 @@ public partial class MainWindow : Window
     {
         string audioPath = Path.GetFullPath("../../../../../../input.mp3");
         
+        using var mediaMeta = new Media(_libVlcInstance, audioPath);
+        mediaMeta.Parse().Wait();
+
+        _channels = (int)mediaMeta.Tracks[0].Data.Audio.Channels;
+        
+        var config = new AudioConfig
+        {
+            SampleRate = (int)mediaMeta.Tracks[0].Data.Audio.Rate,
+            Channels = _channels,
+            BufferSize = 512
+        };
+        
+        _audioEngine = AudioEngineFactory.Create(config);
+        _audioEngine.Start();
+        
         using var media = new Media(_libVlcInstance, audioPath);
         
         _mainMediaPlayer.Play(media);
-        _visualizerMediaPlayer.Play(media);
         
         Console.WriteLine("Now playing");
     }

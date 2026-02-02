@@ -19,6 +19,7 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="LibVLCSharp" Version="3.9.5" />
+        <PackageReference Include="OwnAudioSharp" Version="2.5.4" />
         <PackageReference Include="ScottPlot.Avalonia" Version="5.1.57" />
         <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23" />
     </ItemGroup>

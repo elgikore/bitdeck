@@ -24,7 +24,7 @@ var config = new AudioConfig
 {
     SampleRate = 96000,
     Channels = 2,
-    BufferSize = 5000
+    BufferSize = 512
 };
 
 var engine = AudioEngineFactory.Create(config);
