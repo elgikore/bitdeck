@@ -8,6 +8,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using LibVLCSharp.Shared;
 using Ownaudio.Core;
+using OwnaudioNET;
 using ScottPlot;
 using ScottPlot.Plottables;
 using Colors = ScottPlot.Colors;
@@ -21,11 +22,11 @@ public partial class MainWindow : Window
     private readonly LibVLC _libVlcInstance;
     
     // PCM Player
-    private IAudioEngine? _audioEngine;
+    private IAudioEngine _audioEngine = AudioEngineFactory.CreateDefault();
     
     
     private const int NumOfPoints = 256; // RMS
-    private const int NumOfSamples = 512; // Actual waveform
+    private const int NumOfSamples = 1024; // Actual waveform
     private const float SignedInt16Normalizer = -1 * short.MinValue;
     private readonly float[] _waveformPoints = new float[NumOfPoints];
     private readonly float[] _waveformPointsNegative = new float[NumOfPoints];
@@ -45,7 +46,7 @@ public partial class MainWindow : Window
     {
         public float[] Buffer { get; } = new float[DefaultLength];
         public int ActualLength { get; set; }
-        private const int DefaultLength = 8192;
+        private const int DefaultLength = 8192; // In case of high quality audio
     }
     
     private const int RingSize = 4;
@@ -73,7 +74,8 @@ public partial class MainWindow : Window
         
         _mainMediaPlayer.EndReached += (_, _) =>
         {
-            _audioEngine?.Stop();
+            _audioEngine.Stop();
+            _audioEngine.Dispose();
             _isAudible = false;
         };
         
@@ -108,7 +110,15 @@ public partial class MainWindow : Window
                 Volatile.Write(ref _writeIndex, nextWriteIdx);
             }
 
-            _audioEngine?.Send(writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength));
+            try
+            {
+                _audioEngine.Send(writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength));
+            }
+            catch (Exception e)
+            {
+                // Suppress EngineNotWorking
+                // This is because if the engine is stopped, it would be guaranteed to be started again by the button
+            }
         }, null, null, null, null);
 
         
@@ -198,11 +208,7 @@ public partial class MainWindow : Window
             float sum = 0f;
             int originalIdx = _channels * i;
 
-            for (int channel = 0; channel < _channels; channel++)
-            {
-                // Console.WriteLine(readBufferAsSpan[originalIdx + channel]);
-                sum += readBufferAsSpan[originalIdx + channel];
-            }
+            for (int channel = 0; channel < _channels; channel++) sum += readBufferAsSpan[originalIdx + channel];
         
             _downmixedMono[i] = sum / _channels;
         }
@@ -264,14 +270,14 @@ public partial class MainWindow : Window
     {
         _mainMediaPlayer.Dispose();
         _libVlcInstance.Dispose();
-       _audioEngine?.Dispose();
+       _audioEngine.Dispose();
         
         base.OnClosed(e);
     }
 
     private void PlayButton_Click(object? sender, RoutedEventArgs e)
     {
-        string audioPath = Path.GetFullPath("../../../../../../input2.m4a");
+        string audioPath = Path.GetFullPath("../../../../../../input3.mp3");
         
         using var mediaMeta = new Media(_libVlcInstance, audioPath);
         mediaMeta.Parse().Wait();
@@ -285,8 +291,18 @@ public partial class MainWindow : Window
             BufferSize = 512
         };
         
-        _audioEngine = AudioEngineFactory.Create(config);
-        _audioEngine.Start();
+        if (_isAudible)
+        {
+            _audioEngine.Stop();
+            _audioEngine.Dispose();
+            _audioEngine = AudioEngineFactory.Create(config);
+            _isAudible = false;
+        }
+        
+
+        Console.WriteLine(_audioEngine.Initialize(config));
+        Console.WriteLine(_audioEngine.Start());
+        
         
         using var media = new Media(_libVlcInstance, audioPath);
         
