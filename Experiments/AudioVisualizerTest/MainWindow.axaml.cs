@@ -114,7 +114,7 @@ public partial class MainWindow : Window
             {
                 _audioEngine.Send(writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength));
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // Suppress EngineNotWorking
                 // This is because if the engine is stopped, it would be guaranteed to be started again by the button
