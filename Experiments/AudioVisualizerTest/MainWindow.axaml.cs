@@ -41,11 +41,9 @@ public partial class MainWindow : Window
     // Ring buffer setup since it stutters when ALAC is played
     private class FloatBuffer
     {
-        public float[] Buffer { get; }
+        public float[] Buffer { get; } = new float[DefaultLength];
         public int ActualLength { get; set; }
         private const int DefaultLength = 4092;
-
-        public FloatBuffer() { Buffer = new float[DefaultLength]; }
     }
     
     private const int RingSize = 4;
