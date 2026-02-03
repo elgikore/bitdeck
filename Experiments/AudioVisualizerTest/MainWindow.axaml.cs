@@ -169,6 +169,8 @@ public partial class MainWindow : Window
         Plot.Plot.Axes.SetLimitsX(-30, 0.5);
         Plot.Plot.Axes.Margins(left: 0);
         Plot.Plot.Axes.Left.SetTicks(Generate.Consecutive(2, first: 1), ["Peak", "RMS"]);
+        Plot.Plot.Axes.Left.MajorTickStyle.Length = 0;
+        Plot.Plot.Axes.Left.TickLabelStyle.FontSize = 14;
         Plot.UserInputProcessor.IsEnabled = false;
 
         var barPlot = Plot.Plot.Add.Bars(_dBMeters);
