@@ -28,17 +28,18 @@ public partial class MainWindow : Window
     private const int NumOfPoints = 256; // RMS
     private const int NumOfSamples = 1024; // Actual waveform
     private const float SignedInt16Normalizer = -1 * short.MinValue;
-    private readonly float[] _waveformPoints = new float[NumOfPoints];
-    private readonly float[] _waveformPointsNegative = new float[NumOfPoints];
-    private readonly int[] _waveformPointsIdxs = Generate.Consecutive(NumOfPoints, first: 1)
-                                                .Select(n => (int)n)
-                                                .ToArray();
-    
     private readonly float[] _downmixedMono = new float[5500]; // 5500 samples in case vlc sends a lot of samples
 
     private bool _isAudible;
     private readonly DataStreamer _livePlot;
-    private int _rmsGraphXLimit;
+
+    private readonly double[] _dBMeters = [double.NegativeInfinity, double.NegativeInfinity];
+    
+    private enum DbLabel
+    {
+        Peak,
+        Rms
+    }
     
     
     // Ring buffer setup since it stutters when ALAC is played
@@ -60,9 +61,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        
-        // Initialize RMS graph limit
-        _rmsGraphXLimit = _waveformPoints.Length;
         
         //Initialize VLC
         Core.Initialize();
@@ -137,7 +135,7 @@ public partial class MainWindow : Window
             while (_readIndex != writeIdx)
             {
                 DownmixToMonoForVisualization();
-                CalculateRms(); 
+                // CalculateRms(); 
                 AddRawSampleWaveform(); 
                 
                 int nextReadIndex = (_readIndex + 1) % RingSize;
@@ -148,7 +146,7 @@ public partial class MainWindow : Window
             {
                 Plot.Plot.Axes.AntiAlias(false);
                 Plot.Plot.Axes.SetLimitsY(-1, 1);
-                Plot.Plot.Axes.SetLimitsX(1, _rmsGraphXLimit);
+                Plot.Plot.Axes.SetLimitsX(-30, 0.5);
                 RealPlot.Plot.Axes.AntiAlias(false);
                 RealPlot.Plot.Axes.SetLimitsY(-1, 1);
                 
@@ -164,21 +162,18 @@ public partial class MainWindow : Window
         // RMS Plot
         Plot.UseLayoutRounding = true;
         Plot.RenderTransform = new ScaleTransform(1, 1);
-        Plot.Plot.Axes.Color(Colors.Transparent);
-        Plot.Plot.HideGrid();
+        // Plot.Plot.Axes.Color(Colors.Transparent);
+        // Plot.Plot.HideGrid();
         
         Plot.Plot.Axes.AntiAlias(false);
-        Plot.Plot.Axes.SetLimitsY(-1, 1);
-        Plot.Plot.Axes.SetLimitsX(1, _rmsGraphXLimit);
+        Plot.Plot.Axes.SetLimitsY(0, 3);
+        Plot.Plot.Axes.SetLimitsX(-30, 0.5);
+        Plot.Plot.Axes.Margins(left: 0);
+        Plot.Plot.Axes.Left.SetTicks(Generate.Consecutive(2, first: 1), ["Peak", "RMS"]);
         Plot.UserInputProcessor.IsEnabled = false;
 
-        var scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPoints);
-        scatterPlot.ConnectStyle = ConnectStyle.StepHorizontal;
-        scatterPlot.LineWidth = 2;
-        
-        scatterPlot = Plot.Plot.Add.ScatterLine(_waveformPointsIdxs, _waveformPointsNegative);
-        scatterPlot.LineWidth = 2;
-        scatterPlot.ConnectStyle = ConnectStyle.StepHorizontal;
+        var barPlot = Plot.Plot.Add.Bars(_dBMeters);
+        barPlot.Horizontal = true;  
         
         
         // Actual Waveform
@@ -214,45 +209,45 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CalculateRms()
-    {
-        var monoActualLength = _ringBuffer[_readIndex].ActualLength /  _channels;
-        
-        var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);
-        int chunkSize = (int)Math.Ceiling((float)downmixedMonoAsSpan.Length/ NumOfPoints);
-        bool isStartIdxMoreThanBufferLength = false;
-        
-
-        for (int i = 0; i < NumOfPoints; i++)
-        {
-            int startIdx = i * chunkSize;
-            int endIdx = Math.Min((i + 1) * chunkSize, downmixedMonoAsSpan.Length - 1);
-
-            // Don't produce slices once the startIdx is larger or equal to readBuffer length
-            // Prevents NaNs that crash the whole UI
-            if (startIdx >= downmixedMonoAsSpan.Length)
-            {
-                if (!isStartIdxMoreThanBufferLength)
-                {
-                    isStartIdxMoreThanBufferLength = true;
-                    _rmsGraphXLimit = i + 1; // Use the current index to clamp since i is from NumOfPoint
-                }
-                
-                _waveformPoints[i] = 0; 
-                _waveformPointsNegative[i] = 0; 
-                continue;
-            }
-            
-            var slice = downmixedMonoAsSpan[startIdx..endIdx];
-            
-            float sumOfSquares = 0;
-            
-            foreach (var sample in slice) sumOfSquares += sample * sample;
-
-            _waveformPoints[i] = MathF.Sqrt(sumOfSquares / slice.Length);
-            _waveformPointsNegative[i] = -1 * _waveformPoints[i];
-        }
-    }
+    // private void CalculateRms()
+    // {
+    //     var monoActualLength = _ringBuffer[_readIndex].ActualLength /  _channels;
+    //     
+    //     var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);
+    //     int chunkSize = (int)Math.Ceiling((float)downmixedMonoAsSpan.Length/ NumOfPoints);
+    //     bool isStartIdxMoreThanBufferLength = false;
+    //     
+    //
+    //     for (int i = 0; i < NumOfPoints; i++)
+    //     {
+    //         int startIdx = i * chunkSize;
+    //         int endIdx = Math.Min((i + 1) * chunkSize, downmixedMonoAsSpan.Length - 1);
+    //
+    //         // Don't produce slices once the startIdx is larger or equal to readBuffer length
+    //         // Prevents NaNs that crash the whole UI
+    //         if (startIdx >= downmixedMonoAsSpan.Length)
+    //         {
+    //             if (!isStartIdxMoreThanBufferLength)
+    //             {
+    //                 isStartIdxMoreThanBufferLength = true;
+    //                 _rmsGraphXLimit = i + 1; // Use the current index to clamp since i is from NumOfPoint
+    //             }
+    //             
+    //             _waveformPoints[i] = 0; 
+    //             _waveformPointsNegative[i] = 0; 
+    //             continue;
+    //         }
+    //         
+    //         var slice = downmixedMonoAsSpan[startIdx..endIdx];
+    //         
+    //         float sumOfSquares = 0;
+    //         
+    //         foreach (var sample in slice) sumOfSquares += sample * sample;
+    //
+    //         _waveformPoints[i] = MathF.Sqrt(sumOfSquares / slice.Length);
+    //         _waveformPointsNegative[i] = -1 * _waveformPoints[i];
+    //     }
+    // }
 
     private void AddRawSampleWaveform()
     {
