@@ -37,24 +37,24 @@ public partial class MainWindow : Window
     [
         new()
         {
-            Position = (int)DbLabel.Rms, 
-            Value = -70, 
-            ValueBase = -70, 
-            FillColor = new Category10().GetColor(1)
-        },
-        new()
-        {
-            Position = (int)DbLabel.Peak, 
+            Position = 0, 
             Value = -70, 
             ValueBase = -70, 
             FillColor = new Category10().GetColor(0)
+        },
+        new()
+        {
+            Position = 0, 
+            Value = -70, 
+            ValueBase = -70, 
+            FillColor = new Category10().GetColor(1)
         }
     ];
     
     private enum DbLabel
     {
-        Rms,
-        Peak
+        Peak,
+        Rms
     }
     
     
@@ -162,7 +162,7 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(() =>
             {
                 Plot.Plot.Axes.AntiAlias(false);
-                Plot.Plot.Axes.SetLimitsY(-0.5, 1.5);
+                Plot.Plot.Axes.SetLimitsY(-1, 1);
                 Plot.Plot.Axes.SetLimitsX(-60, 0.5);
                 RealPlot.Plot.Axes.AntiAlias(false);
                 RealPlot.Plot.Axes.SetLimitsY(-1, 1);
@@ -182,17 +182,25 @@ public partial class MainWindow : Window
         Plot.Plot.HideGrid();
         
         Plot.Plot.Axes.AntiAlias(false);
-        Plot.Plot.Axes.SetLimitsY(-0.5, 1.5);
+        Plot.Plot.Axes.SetLimitsY(-1, 1);
         Plot.Plot.Axes.SetLimitsX(-60, 0.5);
         Plot.Plot.Axes.Margins(left: 0);
         
-        Plot.Plot.Axes.Left.SetTicks(Generate.Consecutive(2), ["RMS\n(dBFS)", "Peak\n(dB)"]);
+        Plot.Plot.Axes.Left.SetTicks(Generate.Consecutive(1), ["dB"]);
         Plot.Plot.Axes.Left.MajorTickStyle.Length = 0;
         Plot.Plot.Axes.Left.TickLabelStyle.FontSize = 14;
         Plot.UserInputProcessor.IsEnabled = false;
 
         var barPlot = Plot.Plot.Add.Bars(_dBMeterBars);
-        barPlot.Horizontal = true;  
+        barPlot.Horizontal = true;
+        
+        Plot.Plot.Legend.ManualItems.Add(new() 
+            { LabelText = "Peak", FillColor = _dBMeterBars[(int)DbLabel.Peak].FillColor });
+        
+        Plot.Plot.Legend.ManualItems.Add(new() 
+            { LabelText = "RMS", FillColor = _dBMeterBars[(int)DbLabel.Rms].FillColor });
+        
+        Plot.Plot.ShowLegend(Alignment.UpperRight);
         
         
         // Actual Waveform
