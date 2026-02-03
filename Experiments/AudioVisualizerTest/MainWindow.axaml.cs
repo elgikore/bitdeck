@@ -10,6 +10,7 @@ using LibVLCSharp.Shared;
 using Ownaudio.Core;
 using OwnaudioNET;
 using ScottPlot;
+using ScottPlot.Palettes;
 using ScottPlot.Plottables;
 using Colors = ScottPlot.Colors;
 
@@ -32,12 +33,28 @@ public partial class MainWindow : Window
     private bool _isAudible;
     private readonly DataStreamer _livePlot;
 
-    private readonly double[] _dBMeters = [double.NegativeInfinity, double.NegativeInfinity];
+    private readonly Bar[] _dBMeterBars =
+    [
+        new()
+        {
+            Position = (int)DbLabel.Rms, 
+            Value = -40, 
+            ValueBase = -40, 
+            FillColor = new Category10().GetColor(1)
+        },
+        new()
+        {
+            Position = (int)DbLabel.Peak, 
+            Value = -40, 
+            ValueBase = -40, 
+            FillColor = new Category10().GetColor(0)
+        }
+    ];
     
     private enum DbLabel
     {
-        Peak,
-        Rms
+        Rms,
+        Peak
     }
     
     
@@ -134,7 +151,8 @@ public partial class MainWindow : Window
             while (_readIndex != writeIdx)
             {
                 DownmixToMonoForVisualization();
-                // CalculateRms(); 
+                CalculatePeakDb();
+                CalculateRmsDbfs(); 
                 AddRawSampleWaveform(); 
                 
                 int nextReadIndex = (_readIndex + 1) % RingSize;
@@ -144,7 +162,7 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(() =>
             {
                 Plot.Plot.Axes.AntiAlias(false);
-                Plot.Plot.Axes.SetLimitsY(-1, 1);
+                Plot.Plot.Axes.SetLimitsY(-1, 2);
                 Plot.Plot.Axes.SetLimitsX(-30, 0.5);
                 RealPlot.Plot.Axes.AntiAlias(false);
                 RealPlot.Plot.Axes.SetLimitsY(-1, 1);
@@ -164,15 +182,16 @@ public partial class MainWindow : Window
         Plot.Plot.HideGrid();
         
         Plot.Plot.Axes.AntiAlias(false);
-        Plot.Plot.Axes.SetLimitsY(0, 3);
+        Plot.Plot.Axes.SetLimitsY(-1, 2);
         Plot.Plot.Axes.SetLimitsX(-30, 0.5);
         Plot.Plot.Axes.Margins(left: 0);
-        Plot.Plot.Axes.Left.SetTicks(Generate.Consecutive(2, first: 1), ["Peak", "RMS"]);
+        
+        Plot.Plot.Axes.Left.SetTicks(Generate.Consecutive(2), ["RMS\n(dBFS)", "Peak\n(dB)"]);
         Plot.Plot.Axes.Left.MajorTickStyle.Length = 0;
         Plot.Plot.Axes.Left.TickLabelStyle.FontSize = 14;
         Plot.UserInputProcessor.IsEnabled = false;
 
-        var barPlot = Plot.Plot.Add.Bars(_dBMeters);
+        var barPlot = Plot.Plot.Add.Bars(_dBMeterBars);
         barPlot.Horizontal = true;  
         
         
@@ -211,48 +230,32 @@ public partial class MainWindow : Window
 
     private void CalculatePeakDb()
     {
-        
+        var monoActualLength = _ringBuffer[_readIndex].ActualLength / _channels;
+        var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);
+
+        double absMax = 0;
+
+        foreach (var sample in downmixedMonoAsSpan)
+        {
+            if (Math.Abs(sample) > absMax) absMax = Math.Abs(sample);
+        }
+
+        _dBMeterBars[(int)DbLabel.Peak].Value = 20 * Math.Log10(absMax);
     }
 
-    // private void CalculateRms()
-    // {
-    //     var monoActualLength = _ringBuffer[_readIndex].ActualLength /  _channels;
-    //     
-    //     var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);
-    //     int chunkSize = (int)Math.Ceiling((float)downmixedMonoAsSpan.Length/ NumOfPoints);
-    //     bool isStartIdxMoreThanBufferLength = false;
-    //     
-    //
-    //     for (int i = 0; i < NumOfPoints; i++)
-    //     {
-    //         int startIdx = i * chunkSize;
-    //         int endIdx = Math.Min((i + 1) * chunkSize, downmixedMonoAsSpan.Length - 1);
-    //
-    //         // Don't produce slices once the startIdx is larger or equal to readBuffer length
-    //         // Prevents NaNs that crash the whole UI
-    //         if (startIdx >= downmixedMonoAsSpan.Length)
-    //         {
-    //             if (!isStartIdxMoreThanBufferLength)
-    //             {
-    //                 isStartIdxMoreThanBufferLength = true;
-    //                 _rmsGraphXLimit = i + 1; // Use the current index to clamp since i is from NumOfPoint
-    //             }
-    //             
-    //             _waveformPoints[i] = 0; 
-    //             _waveformPointsNegative[i] = 0; 
-    //             continue;
-    //         }
-    //         
-    //         var slice = downmixedMonoAsSpan[startIdx..endIdx];
-    //         
-    //         float sumOfSquares = 0;
-    //         
-    //         foreach (var sample in slice) sumOfSquares += sample * sample;
-    //
-    //         _waveformPoints[i] = MathF.Sqrt(sumOfSquares / slice.Length);
-    //         _waveformPointsNegative[i] = -1 * _waveformPoints[i];
-    //     }
-    // }
+    private void CalculateRmsDbfs()
+    {
+        var monoActualLength = _ringBuffer[_readIndex].ActualLength /  _channels;
+        var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);
+
+        double sumOfSquares = 0;
+        
+        foreach (var sample in downmixedMonoAsSpan) sumOfSquares += sample * sample;
+
+        double rms = Math.Sqrt(sumOfSquares / downmixedMonoAsSpan.Length);
+        
+        _dBMeterBars[(int)DbLabel.Rms].Value = 20 * Math.Log10(rms);
+    }
 
     private void AddRawSampleWaveform()
     {
