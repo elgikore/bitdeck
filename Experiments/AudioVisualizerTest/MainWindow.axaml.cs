@@ -162,8 +162,7 @@ public partial class MainWindow : Window
         // RMS Plot
         Plot.UseLayoutRounding = true;
         Plot.RenderTransform = new ScaleTransform(1, 1);
-        // Plot.Plot.Axes.Color(Colors.Transparent);
-        // Plot.Plot.HideGrid();
+        Plot.Plot.HideGrid();
         
         Plot.Plot.Axes.AntiAlias(false);
         Plot.Plot.Axes.SetLimitsY(0, 3);
