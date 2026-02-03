@@ -162,7 +162,7 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(() =>
             {
                 Plot.Plot.Axes.AntiAlias(false);
-                Plot.Plot.Axes.SetLimitsY(-1, 1);
+                Plot.Plot.Axes.SetLimitsY(-0.5, 0.5);
                 Plot.Plot.Axes.SetLimitsX(-60, 0.5);
                 RealPlot.Plot.Axes.AntiAlias(false);
                 RealPlot.Plot.Axes.SetLimitsY(-1, 1);
@@ -182,7 +182,7 @@ public partial class MainWindow : Window
         Plot.Plot.HideGrid();
         
         Plot.Plot.Axes.AntiAlias(false);
-        Plot.Plot.Axes.SetLimitsY(-1, 1);
+        Plot.Plot.Axes.SetLimitsY(-0.5, 0.5);
         Plot.Plot.Axes.SetLimitsX(-60, 0.5);
         Plot.Plot.Axes.Margins(left: 0);
         
@@ -194,10 +194,10 @@ public partial class MainWindow : Window
         var barPlot = Plot.Plot.Add.Bars(_dBMeterBars);
         barPlot.Horizontal = true;
         
-        Plot.Plot.Legend.ManualItems.Add(new() 
+        Plot.Plot.Legend.ManualItems.Add(new LegendItem
             { LabelText = "Peak", FillColor = _dBMeterBars[(int)DbLabel.Peak].FillColor });
         
-        Plot.Plot.Legend.ManualItems.Add(new() 
+        Plot.Plot.Legend.ManualItems.Add(new LegendItem
             { LabelText = "RMS", FillColor = _dBMeterBars[(int)DbLabel.Rms].FillColor });
         
         Plot.Plot.ShowLegend(Alignment.UpperRight);
