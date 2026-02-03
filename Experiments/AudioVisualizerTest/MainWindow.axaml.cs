@@ -38,15 +38,15 @@ public partial class MainWindow : Window
         new()
         {
             Position = (int)DbLabel.Rms, 
-            Value = -40, 
-            ValueBase = -40, 
+            Value = -70, 
+            ValueBase = -70, 
             FillColor = new Category10().GetColor(1)
         },
         new()
         {
             Position = (int)DbLabel.Peak, 
-            Value = -40, 
-            ValueBase = -40, 
+            Value = -70, 
+            ValueBase = -70, 
             FillColor = new Category10().GetColor(0)
         }
     ];
@@ -162,8 +162,8 @@ public partial class MainWindow : Window
             Dispatcher.UIThread.Post(() =>
             {
                 Plot.Plot.Axes.AntiAlias(false);
-                Plot.Plot.Axes.SetLimitsY(-1, 2);
-                Plot.Plot.Axes.SetLimitsX(-30, 0.5);
+                Plot.Plot.Axes.SetLimitsY(-0.5, 1.5);
+                Plot.Plot.Axes.SetLimitsX(-60, 0.5);
                 RealPlot.Plot.Axes.AntiAlias(false);
                 RealPlot.Plot.Axes.SetLimitsY(-1, 1);
                 
@@ -182,8 +182,8 @@ public partial class MainWindow : Window
         Plot.Plot.HideGrid();
         
         Plot.Plot.Axes.AntiAlias(false);
-        Plot.Plot.Axes.SetLimitsY(-1, 2);
-        Plot.Plot.Axes.SetLimitsX(-30, 0.5);
+        Plot.Plot.Axes.SetLimitsY(-0.5, 1.5);
+        Plot.Plot.Axes.SetLimitsX(-60, 0.5);
         Plot.Plot.Axes.Margins(left: 0);
         
         Plot.Plot.Axes.Left.SetTicks(Generate.Consecutive(2), ["RMS\n(dBFS)", "Peak\n(dB)"]);
