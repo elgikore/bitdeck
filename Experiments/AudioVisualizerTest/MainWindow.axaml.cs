@@ -25,8 +25,7 @@ public partial class MainWindow : Window
     private IAudioEngine _audioEngine = AudioEngineFactory.CreateDefault();
     
     
-    private const int NumOfPoints = 256; // RMS
-    private const int NumOfSamples = 1024; // Actual waveform
+    private const int NumOfSamples = 1024; // Actual waveform view
     private const float SignedInt16Normalizer = -1 * short.MinValue;
     private readonly float[] _downmixedMono = new float[5500]; // 5500 samples in case vlc sends a lot of samples
 
@@ -159,7 +158,7 @@ public partial class MainWindow : Window
         
         
         
-        // RMS Plot
+        // DB Meters
         Plot.UseLayoutRounding = true;
         Plot.RenderTransform = new ScaleTransform(1, 1);
         Plot.Plot.HideGrid();
@@ -210,6 +209,11 @@ public partial class MainWindow : Window
         }
     }
 
+    private void CalculatePeakDb()
+    {
+        
+    }
+
     // private void CalculateRms()
     // {
     //     var monoActualLength = _ringBuffer[_readIndex].ActualLength /  _channels;
@@ -255,8 +259,7 @@ public partial class MainWindow : Window
         // Don't ever use LINQ in tight loops or insanely fast callbacks because it creates a big overhead
         // and tons of copies per stage
         
-        var monoActualLength = _ringBuffer[_readIndex].ActualLength /  _channels;
-        
+        var monoActualLength = _ringBuffer[_readIndex].ActualLength / _channels;
         var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);    
 
         foreach (var sample in downmixedMonoAsSpan) _livePlot.Add(sample);
