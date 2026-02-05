@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -33,23 +34,27 @@ public partial class MainWindow : Window
     private bool _isAudible;
     private readonly DataStreamer _livePlot;
 
+    private const int DEFAULT_METER_VALUE = -70;
+
     private readonly Bar[] _dBMeterBars =
     [
         new()
         {
             Position = 0, 
-            Value = -70, 
-            ValueBase = -70, 
+            Value = DEFAULT_METER_VALUE, 
+            ValueBase = DEFAULT_METER_VALUE, 
             FillColor = new Category10().GetColor(0)
         },
         new()
         {
             Position = 0, 
-            Value = -70, 
-            ValueBase = -70, 
+            Value = DEFAULT_METER_VALUE, 
+            ValueBase = DEFAULT_METER_VALUE, 
             FillColor = new Category10().GetColor(1)
         }
     ];
+    
+    private readonly double[] _currentDbReading = new double[Enum.GetValues<DbLabel>().Length];
     
     private enum DbLabel
     {
@@ -72,6 +77,8 @@ public partial class MainWindow : Window
     private int _readIndex;
     private int _writeIndex;
     private int _channels;
+
+    private double[] _blankWaveform = Enumerable.Repeat(0, NumOfSamples).Select(n => (double)n).ToArray();
 
 
     public MainWindow()
@@ -135,16 +142,9 @@ public partial class MainWindow : Window
             }
         }, null, null, null, null);
 
-        
-        
-        // UI Thread
-        const int fps = 30;
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1f / fps) };
-        
-        timer.Tick += (_, _) =>
+        // DSP Thread
+        Task.Run(() =>
         {
-            if (!_isAudible) return;
-            
             int writeIdx = Volatile.Read(ref _writeIndex);
             
             // Exhaust buffer
@@ -157,6 +157,19 @@ public partial class MainWindow : Window
                 
                 int nextReadIndex = (_readIndex + 1) % RingSize;
                 Volatile.Write(ref _readIndex, nextReadIndex);
+            }
+        });
+        
+        // UI Thread
+        const int fps = 30;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1f / fps) };
+        
+        timer.Tick += (_, _) =>
+        {
+            if (!_isAudible)
+            {
+                _livePlot?.AddRange(_blankWaveform);
+                return;
             }
             
             Dispatcher.UIThread.Post(() =>
@@ -214,7 +227,7 @@ public partial class MainWindow : Window
         RealPlot.UserInputProcessor.IsEnabled = false;
 
         _livePlot = RealPlot.Plot.Add.DataStreamer(NumOfSamples);
-        _livePlot.AddRange(Enumerable.Repeat(0, NumOfSamples).Select(n => (double)n).ToArray());
+        _livePlot.AddRange(_blankWaveform);
         _livePlot.LineWidth = 2;
         _livePlot.ViewScrollLeft();
     }
@@ -236,7 +249,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CalculatePeakDb()
+    private double CalculatePeakDb()
     {
         var monoActualLength = _ringBuffer[_readIndex].ActualLength / _channels;
         var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);
@@ -248,10 +261,10 @@ public partial class MainWindow : Window
             if (Math.Abs(sample) > absMax) absMax = Math.Abs(sample);
         }
 
-        _dBMeterBars[(int)DbLabel.Peak].Value = 20 * Math.Log10(absMax);
+        return 20 * Math.Log10(absMax);
     }
 
-    private void CalculateRmsDbfs()
+    private double CalculateRmsDbfs()
     {
         var monoActualLength = _ringBuffer[_readIndex].ActualLength /  _channels;
         var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);
@@ -262,7 +275,7 @@ public partial class MainWindow : Window
 
         double rms = Math.Sqrt(sumOfSquares / downmixedMonoAsSpan.Length);
         
-        _dBMeterBars[(int)DbLabel.Rms].Value = 20 * Math.Log10(rms);
+        return 20 * Math.Log10(rms);
     }
 
     private void AddRawSampleWaveform()
