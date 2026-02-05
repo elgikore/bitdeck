@@ -118,7 +118,7 @@ public partial class MainWindow : Window
             unsafe
             {
                 short* samplePoints = (short*)samples;
-                int samplePointsLength = (int)count * _channels; // Can use as is because mono
+                int samplePointsLength = (int)count * _channels;
                 
                 if (samplePoints == null || samplePointsLength == 0) return;
 
