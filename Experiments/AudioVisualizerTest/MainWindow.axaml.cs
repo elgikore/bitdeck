@@ -131,32 +131,47 @@ public partial class MainWindow : Window
                 Volatile.Write(ref _writeIndex, nextWriteIdx);
             }
 
-            try
-            {
-                _audioEngine.Send(writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength));
-            }
-            catch (Exception)
-            {
-                // Suppress EngineNotWorking
-                // This is because if the engine is stopped, it would be guaranteed to be started again by the button
-            }
+            // Doesn't throw an exception because we set _isAudible first when playing or restarting the song
+            _audioEngine.Send(writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength));
+
         }, null, null, null, null);
 
         // DSP Thread
         Task.Run(() =>
         {
-            int writeIdx = Volatile.Read(ref _writeIndex);
-            
-            // Exhaust buffer
-            while (_readIndex != writeIdx)
+            while (true)
             {
-                DownmixToMonoForVisualization();
-                CalculatePeakDb();
-                CalculateRmsDbfs(); 
-                AddRawSampleWaveform(); 
+                if (!_isAudible)
+                {
+                    Thread.Sleep(1); // reduce CPU usage even when continuing
+                    continue;
+                }
                 
-                int nextReadIndex = (_readIndex + 1) % RingSize;
-                Volatile.Write(ref _readIndex, nextReadIndex);
+                int writeIdx = Volatile.Read(ref _writeIndex);
+            
+                // Exhaust buffer
+                while (_readIndex != writeIdx)
+                {
+                    DownmixToMonoForVisualization();
+                    
+                    double peakDb = CalculatePeakDb();
+                    double rmsDbfs = CalculateRmsDbfs(); 
+                    
+                    // No need for Interlocked because it is a simple push to the graph
+                    // DataStreamer handles the current values from us
+                    AddRawSampleWaveform(); 
+                
+                    Interlocked.Exchange(ref _currentDbReading[(int)DbLabel.Peak], peakDb);
+                    Interlocked.Exchange(ref _currentDbReading[(int)DbLabel.Rms], rmsDbfs);
+                    
+                    int nextReadIndex = (_readIndex + 1) % RingSize;
+                    
+                    Volatile.Write(ref _readIndex, nextReadIndex);
+                }
+
+                // Console.WriteLine("Written");
+                
+                Thread.Sleep(1); // sleep for 1 ms to avoid heavy calculations too fast
             }
         });
         
@@ -166,11 +181,16 @@ public partial class MainWindow : Window
         
         timer.Tick += (_, _) =>
         {
-            if (!_isAudible)
-            {
-                _livePlot?.AddRange(_blankWaveform);
-                return;
-            }
+            if (!_isAudible) return;
+            
+            // Get current reading for peak and RMS
+            // No need to do this for waveform since a simple DataStreamer push already handles the things for us
+            // -- old values are pushed to the left as new values are added to the right
+            double peakDb = Interlocked.CompareExchange(ref _currentDbReading[(int)DbLabel.Peak], 0, 0);
+            double rmsDbfs = Interlocked.CompareExchange(ref _currentDbReading[(int)DbLabel.Rms], 0, 0);
+            
+            _dBMeterBars[(int)DbLabel.Peak].Value = peakDb;
+            _dBMeterBars[(int)DbLabel.Rms].Value = rmsDbfs;
             
             Dispatcher.UIThread.Post(() =>
             {
@@ -316,10 +336,22 @@ public partial class MainWindow : Window
         
         if (_isAudible)
         {
+            _isAudible = false; // Putting this here disappears the exception entirely
+            Thread.Sleep(2);
+            
+            foreach (var dbLabel in Enum.GetValues<DbLabel>())
+            {
+                _dBMeterBars[(int)dbLabel].Value = DEFAULT_METER_VALUE;
+            }
+            
+            _livePlot.AddRange(_blankWaveform);
+            
+            Plot.Refresh();
+            RealPlot.Refresh();
+            
             _audioEngine.Stop();
             _audioEngine.Dispose();
             _audioEngine = AudioEngineFactory.Create(config);
-            _isAudible = false;
         }
         
 
