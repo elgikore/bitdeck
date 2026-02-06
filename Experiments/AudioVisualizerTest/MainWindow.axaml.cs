@@ -22,48 +22,20 @@ public partial class MainWindow : Window
     // VLC specific
     private readonly MediaPlayer _mainMediaPlayer;
     private readonly LibVLC _libVlcInstance;
+    private const float SignedInt16Normalizer = -1 * short.MinValue; // Normalize short (signed int16) to float
+                                                                     // since VLC always sends signed 16-bit
     
     // PCM Player
     private IAudioEngine _audioEngine = AudioEngineFactory.CreateDefault();
     
-    
-    private const int NumOfSamples = 1024; // Actual waveform view
-    private const float SignedInt16Normalizer = -1 * short.MinValue;
-    private readonly float[] _downmixedMono = new float[5500]; // 5500 samples in case vlc sends a lot of samples
-
+    // Only render visualizers if the music is actually audible
     private bool _isAudible;
-    private readonly DataStreamer _livePlot;
-
-    private const int DEFAULT_METER_VALUE = -70;
-
-    private readonly Bar[] _dBMeterBars =
-    [
-        new()
-        {
-            Position = 0, 
-            Value = DEFAULT_METER_VALUE, 
-            ValueBase = DEFAULT_METER_VALUE, 
-            FillColor = new Category10().GetColor(0)
-        },
-        new()
-        {
-            Position = 0, 
-            Value = DEFAULT_METER_VALUE, 
-            ValueBase = DEFAULT_METER_VALUE, 
-            FillColor = new Category10().GetColor(1)
-        }
-    ];
     
-    private readonly double[] _currentDbReading = new double[Enum.GetValues<DbLabel>().Length];
+    // Channels
+    private int _channels;
     
-    private enum DbLabel
-    {
-        Peak,
-        Rms
-    }
-    
-    
-    // Ring buffer setup since it stutters when ALAC is played
+    // Ring buffer setup so that it doesn't stutter when other audio formats that are not WAV or MP3 (e.g. ALAC)
+    // is played
     private class FloatBuffer
     {
         public float[] Buffer { get; } = new float[DefaultLength];
@@ -72,15 +44,44 @@ public partial class MainWindow : Window
     }
     
     private const int RingSize = 4;
-    private readonly FloatBuffer[] _ringBuffer = [new(), new(), new(), new()];
-    
     private int _readIndex;
     private int _writeIndex;
-    private int _channels;
-
-    private double[] _blankWaveform = Enumerable.Repeat(0, NumOfSamples).Select(n => (double)n).ToArray();
-
-
+    private readonly FloatBuffer[] _ringBuffer = [new(), new(), new(), new()];
+    
+    // Downmix to mono for visualization
+    // 5500 samples in case vlc sends a lot of samples
+    private readonly float[] _downmixedMono = new float[5500]; 
+    
+    // Waveform view
+    private readonly DataStreamer _livePlot;
+    private const int NumOfSamplesInView = 1024; 
+    private readonly double[] _blankWaveform = Enumerable.Repeat(0, NumOfSamplesInView)
+        .Select(n => (double)n).ToArray();
+    
+    // DB Meters
+    private enum DbLabel { Peak, Rms }
+    private const int DefaultMeterValue = -70;
+    private readonly Bar[] _dBMeterBars =
+    [
+        new()
+        {
+            Position = 0, 
+            Value = DefaultMeterValue, 
+            ValueBase = DefaultMeterValue, 
+            FillColor = new Category10().GetColor(0)
+        },
+        new()
+        {
+            Position = 0, 
+            Value = DefaultMeterValue, 
+            ValueBase = DefaultMeterValue, 
+            FillColor = new Category10().GetColor(1)
+        }
+    ];
+    
+    private readonly double[] _currentDbReading = new double[Enum.GetValues<DbLabel>().Length];
+    
+    
     public MainWindow()
     {
         InitializeComponent();
@@ -246,7 +247,7 @@ public partial class MainWindow : Window
         RealPlot.Plot.Axes.SetLimitsY(-1, 1);
         RealPlot.UserInputProcessor.IsEnabled = false;
 
-        _livePlot = RealPlot.Plot.Add.DataStreamer(NumOfSamples);
+        _livePlot = RealPlot.Plot.Add.DataStreamer(NumOfSamplesInView);
         _livePlot.AddRange(_blankWaveform);
         _livePlot.LineWidth = 2;
         _livePlot.ViewScrollLeft();
@@ -341,7 +342,7 @@ public partial class MainWindow : Window
             
             foreach (var dbLabel in Enum.GetValues<DbLabel>())
             {
-                _dBMeterBars[(int)dbLabel].Value = DEFAULT_METER_VALUE;
+                _dBMeterBars[(int)dbLabel].Value = DefaultMeterValue;
             }
             
             _livePlot.AddRange(_blankWaveform);
