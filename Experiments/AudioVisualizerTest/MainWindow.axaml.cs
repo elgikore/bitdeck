@@ -81,6 +81,9 @@ public partial class MainWindow : Window
     
     private readonly double[] _currentDbReading = new double[Enum.GetValues<DbLabel>().Length];
     
+    // Spectrum Analyzer
+    
+    
     
     public MainWindow()
     {
@@ -149,26 +152,26 @@ public partial class MainWindow : Window
                 }
                 
                 int writeIdx = Volatile.Read(ref _writeIndex);
-            
-                // Exhaust buffer
-                while (_readIndex != writeIdx)
-                {
-                    DownmixToMonoForVisualization();
-                    
-                    double peakDb = CalculatePeakDb();
-                    double rmsDbfs = CalculateRmsDbfs(); 
-                    
-                    // No need for Interlocked because it is a simple push to the graph
-                    // DataStreamer handles the current values from us
-                    AddRawSampleWaveform(); 
                 
-                    Interlocked.Exchange(ref _currentDbReading[(int)DbLabel.Peak], peakDb);
-                    Interlocked.Exchange(ref _currentDbReading[(int)DbLabel.Rms], rmsDbfs);
+                if (_readIndex == writeIdx) continue; // Skip
+            
+                
+                DownmixToMonoForVisualization();
                     
-                    int nextReadIndex = (_readIndex + 1) % RingSize;
+                double peakDb = CalculatePeakDb();
+                double rmsDbfs = CalculateRmsDbfs(); 
                     
-                    Volatile.Write(ref _readIndex, nextReadIndex);
-                }
+                // No need for Interlocked because it is a simple push to the graph
+                // DataStreamer handles the current values from us
+                AddRawSampleWaveform(); 
+                
+                Interlocked.Exchange(ref _currentDbReading[(int)DbLabel.Peak], peakDb);
+                Interlocked.Exchange(ref _currentDbReading[(int)DbLabel.Rms], rmsDbfs);
+                    
+                int nextReadIndex = (_readIndex + 1) % RingSize;
+                    
+                Volatile.Write(ref _readIndex, nextReadIndex);
+                
 
                 // Console.WriteLine("Written");
                 
@@ -251,6 +254,8 @@ public partial class MainWindow : Window
         _livePlot.AddRange(_blankWaveform);
         _livePlot.LineWidth = 2;
         _livePlot.ViewScrollLeft();
+        
+        // Spectrum Analyzer
     }
 
     private void DownmixToMonoForVisualization()
