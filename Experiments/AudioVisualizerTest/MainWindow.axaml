@@ -6,8 +6,8 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="AudioVisualizerTest.MainWindow"
         Title="AudioVisualizerTest">
-    <Grid RowDefinitions="*, Auto">
-        <Grid RowDefinitions="*, *" ColumnDefinitions="0.25*, *" Background="White">
+    <Grid RowDefinitions="*, 50">
+        <Grid RowDefinitions="*, *, *" ColumnDefinitions="0.25*, *" Background="White">
             <TextBlock TextAlignment="Center" 
                        VerticalAlignment="Center" 
                        Foreground="Black" 
@@ -35,7 +35,22 @@
             </TextBlock>
             
             <sp:AvaPlot Grid.Row="1" Grid.Column="1" x:Name="RealPlot" />
+            
+            <TextBlock Grid.Row="2" Grid.Column="0" 
+                       TextAlignment="Center" 
+                       VerticalAlignment="Center" 
+                       Foreground="Black" 
+                       FontSize="16">
+                Spectrum/FFT 
+                <LineBreak/>
+                <LineBreak/>
+                (10-band Display)
+            </TextBlock>
+            
+            <sp:AvaPlot Grid.Row="2" Grid.Column="1" x:Name="FftPlot" />
         </Grid>
-        <Button Grid.Row="1" Content="Play Visualizer" Click="PlayButton_Click" />
+        
+        <Button Grid.Row="1" Content="Play Visualizer" VerticalAlignment="Center" HorizontalAlignment="Center" 
+                Click="PlayButton_Click" />
     </Grid>
 </Window>
