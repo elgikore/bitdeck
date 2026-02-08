@@ -40,17 +40,16 @@ public partial class MainWindow : Window
     {
         public float[] Buffer { get; } = new float[DefaultLength];
         public int ActualLength { get; set; }
-        private const int DefaultLength = 8192; // In case of high quality audio
+        private const int DefaultLength = 6000; // In case of high quality audio
     }
     
     private const int RingSize = 4;
     private int _readIndex;
     private int _writeIndex;
     private readonly FloatBuffer[] _ringBuffer = [new(), new(), new(), new()];
-    
-    // Downmix to mono for visualization
-    // 5500 samples in case vlc sends a lot of samples
-    private readonly float[] _downmixedMono = new float[5500]; 
+
+    // Temp buffer for copying and sending to speakers
+    private readonly float[] _tempAudioFloatBuffer = new float[10000];
     
     // Waveform view
     private readonly DataStreamer _livePlot;
@@ -117,7 +116,7 @@ public partial class MainWindow : Window
             // Overwrite when ring buffer is full, no if check needed
             // writeIndex is always one step ahead of readIndex
             
-            var writeBuffer = _ringBuffer[_writeIndex];
+            var audioFloatBufferAsSpan = _tempAudioFloatBuffer.AsSpan();
             
             unsafe
             {
@@ -128,15 +127,18 @@ public partial class MainWindow : Window
 
                 for (int i = 0; i < samplePointsLength; i++)
                 {
-                    writeBuffer.Buffer[i] = samplePoints[i] / SignedInt16Normalizer;
+                    audioFloatBufferAsSpan[i] = samplePoints[i] / SignedInt16Normalizer;
                 }
                 
-                writeBuffer.ActualLength = samplePointsLength;
+                DownmixToMonoForVisualization(audioFloatBufferAsSpan, samplePointsLength);
+                
+                // Doesn't throw an exception because we set _isAudible first when playing or restarting the song
+                _audioEngine.Send(audioFloatBufferAsSpan[..samplePointsLength]);
+                
                 Volatile.Write(ref _writeIndex, nextWriteIdx);
             }
 
-            // Doesn't throw an exception because we set _isAudible first when playing or restarting the song
-            _audioEngine.Send(writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength));
+            
 
         }, null, null, null, null);
 
@@ -154,9 +156,6 @@ public partial class MainWindow : Window
                 int writeIdx = Volatile.Read(ref _writeIndex);
                 
                 if (_readIndex == writeIdx) continue; // Skip
-            
-                
-                DownmixToMonoForVisualization();
                     
                 double peakDb = CalculatePeakDb();
                 double rmsDbfs = CalculateRmsDbfs(); 
@@ -171,9 +170,6 @@ public partial class MainWindow : Window
                 int nextReadIndex = (_readIndex + 1) % RingSize;
                     
                 Volatile.Write(ref _readIndex, nextReadIndex);
-                
-
-                // Console.WriteLine("Written");
                 
                 Thread.Sleep(1); // sleep for 1 ms to avoid heavy calculations too fast
             }
@@ -258,48 +254,50 @@ public partial class MainWindow : Window
         // Spectrum Analyzer
     }
 
-    private void DownmixToMonoForVisualization()
+    private void DownmixToMonoForVisualization(Span<float> audioFloatBuffer, int actualLength)
     {
-        var readBuffer = _ringBuffer[_readIndex];
-        var readBufferAsSpan = readBuffer.Buffer.AsSpan(0, readBuffer.ActualLength);
-        int sampleCount = readBufferAsSpan.Length / _channels;
+        var writeBuffer = _ringBuffer[_writeIndex];
+        var audioBufferActualLength = audioFloatBuffer[..actualLength];
+        int monoSampleCount = audioBufferActualLength.Length / _channels;
         
-        for (int i = 0; i < sampleCount; i++)
+        for (int i = 0; i < monoSampleCount; i++)
         {
             float sum = 0f;
             int originalIdx = _channels * i;
-
-            for (int channel = 0; channel < _channels; channel++) sum += readBufferAsSpan[originalIdx + channel];
         
-            _downmixedMono[i] = sum / _channels;
+            for (int channel = 0; channel < _channels; channel++) sum += audioBufferActualLength[originalIdx + channel];
+        
+            writeBuffer.Buffer[i] = sum / _channels;
         }
+        
+        writeBuffer.ActualLength = monoSampleCount;
     }
 
     private double CalculatePeakDb()
     {
-        var monoActualLength = _ringBuffer[_readIndex].ActualLength / _channels;
-        var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);
-
+        var writeBuffer = _ringBuffer[_writeIndex];
+        var writeBufferAsSpan = writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength);
+        
         double absMax = 0;
-
-        foreach (var sample in downmixedMonoAsSpan)
+        
+        foreach (var sample in writeBufferAsSpan)
         {
             if (Math.Abs(sample) > absMax) absMax = Math.Abs(sample);
         }
-
+        
         return 20 * Math.Log10(absMax);
     }
 
     private double CalculateRmsDbfs()
     {
-        var monoActualLength = _ringBuffer[_readIndex].ActualLength /  _channels;
-        var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);
-
+        var writeBuffer = _ringBuffer[_writeIndex];
+        var writeBufferAsSpan = writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength);
+        
         double sumOfSquares = 0;
         
-        foreach (var sample in downmixedMonoAsSpan) sumOfSquares += sample * sample;
-
-        double rms = Math.Sqrt(sumOfSquares / downmixedMonoAsSpan.Length);
+        foreach (var sample in writeBufferAsSpan) sumOfSquares += sample * sample;
+        
+        double rms = Math.Sqrt(sumOfSquares / writeBufferAsSpan.Length);
         
         return 20 * Math.Log10(rms);
     }
@@ -309,10 +307,10 @@ public partial class MainWindow : Window
         // Don't ever use LINQ in tight loops or insanely fast callbacks because it creates a big overhead
         // and tons of copies per stage
         
-        var monoActualLength = _ringBuffer[_readIndex].ActualLength / _channels;
-        var downmixedMonoAsSpan = _downmixedMono.AsSpan(0, monoActualLength);    
-
-        foreach (var sample in downmixedMonoAsSpan) _livePlot.Add(sample);
+        var writeBuffer = _ringBuffer[_writeIndex];
+        var writeBufferAsSpan = writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength);   
+        
+        foreach (var sample in writeBufferAsSpan) _livePlot.Add(sample);
     }
 
     protected override void OnClosed(EventArgs e)
