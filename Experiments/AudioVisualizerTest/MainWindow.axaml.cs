@@ -39,23 +39,27 @@ public partial class MainWindow : Window
     private class FloatBuffer
     {
         public float[] Buffer { get; } = new float[DefaultLength];
-        public int ActualLength { get; set; }
-        private const int DefaultLength = 6000; // In case of high quality audio
+        private const int DefaultLength = 2048; // In case of high quality audio
     }
     
     private const int RingSize = 4;
     private int _readIndex;
     private int _writeIndex;
+    private int _floatBufferIdx;
     private readonly FloatBuffer[] _ringBuffer = [new(), new(), new(), new()];
+    
+    // Fixed Chunk
+    private const int FixedChunk = 2048;
 
     // Temp buffer for copying and sending to speakers
     private readonly float[] _tempAudioFloatBuffer = new float[10000];
     
     // Waveform view
-    private readonly DataStreamer _livePlot;
-    private const int NumOfSamplesInView = 1024; 
-    private readonly double[] _blankWaveform = Enumerable.Repeat(0, NumOfSamplesInView)
-        .Select(n => (double)n).ToArray();
+    private readonly Signal _linePlot;
+    private const int NumOfSamplesInView = 2048;
+    private enum WaveformBuffer { Current, Back };
+    private readonly double[][] _bufferedWaveform = [new double[NumOfSamplesInView], new double[NumOfSamplesInView]];
+    
     
     // DB Meters
     private enum DbLabel { Peak, Rms }
@@ -111,8 +115,6 @@ public partial class MainWindow : Window
         {
             if (!_isAudible) return;
             
-            int nextWriteIdx = (_writeIndex + 1) % RingSize;
-            
             // Overwrite when ring buffer is full, no if check needed
             // writeIndex is always one step ahead of readIndex
             
@@ -130,16 +132,13 @@ public partial class MainWindow : Window
                     audioFloatBufferAsSpan[i] = samplePoints[i] / SignedInt16Normalizer;
                 }
                 
-                DownmixToMonoForVisualization(audioFloatBufferAsSpan, samplePointsLength);
+                DownmixToMonoForVisualization(audioFloatBufferAsSpan, samplePointsLength, out var nextWriteIdx);
                 
                 // Doesn't throw an exception because we set _isAudible first when playing or restarting the song
                 _audioEngine.Send(audioFloatBufferAsSpan[..samplePointsLength]);
                 
                 Volatile.Write(ref _writeIndex, nextWriteIdx);
             }
-
-            
-
         }, null, null, null, null);
 
         // DSP Thread
@@ -162,7 +161,7 @@ public partial class MainWindow : Window
                     
                 // No need for Interlocked because it is a simple push to the graph
                 // DataStreamer handles the current values from us
-                AddRawSampleWaveform(); 
+                // AddRawSampleWaveform(); 
                 
                 Interlocked.Exchange(ref _currentDbReading[(int)DbLabel.Peak], peakDb);
                 Interlocked.Exchange(ref _currentDbReading[(int)DbLabel.Rms], rmsDbfs);
@@ -199,6 +198,7 @@ public partial class MainWindow : Window
                 Plot.Plot.Axes.SetLimitsX(-60, 0.5);
                 RealPlot.Plot.Axes.AntiAlias(false);
                 RealPlot.Plot.Axes.SetLimitsY(-1, 1);
+                RealPlot.Plot.Axes.SetLimitsX(0, NumOfSamplesInView - 1);
                 
                 Plot.Refresh();
                 RealPlot.Refresh();
@@ -244,39 +244,50 @@ public partial class MainWindow : Window
         
         RealPlot.Plot.Axes.AntiAlias(false);
         RealPlot.Plot.Axes.SetLimitsY(-1, 1);
+        RealPlot.Plot.Axes.SetLimitsX(0, NumOfSamplesInView - 1);
         RealPlot.UserInputProcessor.IsEnabled = false;
 
-        _livePlot = RealPlot.Plot.Add.DataStreamer(NumOfSamplesInView);
-        _livePlot.AddRange(_blankWaveform);
-        _livePlot.LineWidth = 2;
-        _livePlot.ViewScrollLeft();
+        _linePlot = RealPlot.Plot.Add.Signal(_bufferedWaveform[(int)WaveformBuffer.Current]);
+        _linePlot.LineWidth = 2;
         
         // Spectrum Analyzer
     }
 
-    private void DownmixToMonoForVisualization(Span<float> audioFloatBuffer, int actualLength)
+    private void DownmixToMonoForVisualization(Span<float> audioFloatBuffer, int actualLength, out int nextWriteIndex)
     {
-        var writeBuffer = _ringBuffer[_writeIndex];
+        int currentWriteIndex = _writeIndex;
+        // int nextWriteIdx = (currentWriteIndex + 1) % RingSize;
+        // int ithSample = 0;
+        
         var audioBufferActualLength = audioFloatBuffer[..actualLength];
         int monoSampleCount = audioBufferActualLength.Length / _channels;
         
+        
+        
         for (int i = 0; i < monoSampleCount; i++)
         {
+            if (_floatBufferIdx >= FixedChunk)
+            {
+                _floatBufferIdx = 0;
+                currentWriteIndex = (++currentWriteIndex == 4) ? 0 : currentWriteIndex;
+            }
+            
             float sum = 0f;
             int originalIdx = _channels * i;
         
             for (int channel = 0; channel < _channels; channel++) sum += audioBufferActualLength[originalIdx + channel];
         
-            writeBuffer.Buffer[i] = sum / _channels;
+            _ringBuffer[currentWriteIndex].Buffer[_floatBufferIdx] = sum / _channels;
+            _floatBufferIdx++;
         }
         
-        writeBuffer.ActualLength = monoSampleCount;
+        nextWriteIndex = currentWriteIndex;
     }
 
     private double CalculatePeakDb()
     {
         var writeBuffer = _ringBuffer[_writeIndex];
-        var writeBufferAsSpan = writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength);
+        var writeBufferAsSpan = writeBuffer.Buffer.AsSpan();
         
         double absMax = 0;
         
@@ -291,7 +302,7 @@ public partial class MainWindow : Window
     private double CalculateRmsDbfs()
     {
         var writeBuffer = _ringBuffer[_writeIndex];
-        var writeBufferAsSpan = writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength);
+        var writeBufferAsSpan = writeBuffer.Buffer.AsSpan();
         
         double sumOfSquares = 0;
         
@@ -302,16 +313,16 @@ public partial class MainWindow : Window
         return 20 * Math.Log10(rms);
     }
 
-    private void AddRawSampleWaveform()
-    {
-        // Don't ever use LINQ in tight loops or insanely fast callbacks because it creates a big overhead
-        // and tons of copies per stage
-        
-        var writeBuffer = _ringBuffer[_writeIndex];
-        var writeBufferAsSpan = writeBuffer.Buffer.AsSpan(0, writeBuffer.ActualLength);   
-        
-        foreach (var sample in writeBufferAsSpan) _livePlot.Add(sample);
-    }
+    // private void AddRawSampleWaveform()
+    // {
+    //     // Don't ever use LINQ in tight loops or insanely fast callbacks because it creates a big overhead
+    //     // and tons of copies per stage
+    //     
+    //     var writeBuffer = _ringBuffer[_writeIndex];
+    //     var writeBufferAsSpan = writeBuffer.Buffer.AsSpan();   
+    //     
+    //     foreach (var sample in writeBufferAsSpan) _linePlot.Add(sample);
+    // }
 
     protected override void OnClosed(EventArgs e)
     {
@@ -347,8 +358,12 @@ public partial class MainWindow : Window
             {
                 _dBMeterBars[(int)dbLabel].Value = DefaultMeterValue;
             }
-            
-            _livePlot.AddRange(_blankWaveform);
+
+            for (int i = 0; i < NumOfSamplesInView; i++)
+            {
+                _bufferedWaveform[(int)WaveformBuffer.Current][i] = 0;
+                _bufferedWaveform[(int)WaveformBuffer.Back][i] = 0;
+            }
             
             Plot.Refresh();
             RealPlot.Refresh();
