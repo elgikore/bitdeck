@@ -36,23 +36,31 @@ public partial class MainWindow : Window
     
     // Ring buffer setup so that it doesn't stutter when other audio formats that are not WAV or MP3 (e.g. ALAC)
     // is played
-    private class FloatBuffer
-    {
-        public float[] Buffer { get; } = new float[DefaultLength];
-        private const int DefaultLength = 2048; // In case of high quality audio
-    }
-    
-    private const int RingSize = 4;
-    private int _readIndex;
-    private int _writeIndex;
-    private int _floatBufferIdx;
-    private readonly FloatBuffer[] _ringBuffer = [new(), new(), new(), new()];
+    // private class FloatBuffer
+    // {
+    //     public float[] Buffer { get; } = new float[DefaultLength];
+    //     private const int DefaultLength = 2048; // In case of high quality audio
+    // }
+    //
+    // private const int RingSize = 4;
+    // private int _readIndex;
+    // private int _writeIndex;
+    // private int _floatBufferIdx;
+    // private readonly FloatBuffer[] _ringBuffer = [new(), new(), new(), new()];
     
     // Fixed Chunk
     private const int FixedChunk = 2048;
+    
+    // Audio buffer size
+    private const int MonoAudioBufferSize = 32768; // 2^15; 32768 * sizeof(float) = 64KB buffer (long buffer for DSP)
+    private const int AudioBufferSize = 16384; // 2^15; 16384 * sizeof(float) = 32KB buffer (short buffer because
+                                               // it is for playing)
 
     // Temp buffer for copying and sending to speakers
-    private readonly float[] _tempAudioFloatBuffer = new float[10000];
+    private readonly float[] _monoAudioFloatBuffer = new float[MonoAudioBufferSize];
+    private readonly float[] _audioFloatBuffer = new float[AudioBufferSize];
+    private AutoResetEvent _areSamplesReady = new AutoResetEvent(false);
+    private int _monoAudioBufferIdx;
     
     // Waveform view
     private readonly Signal _linePlot;
@@ -115,11 +123,6 @@ public partial class MainWindow : Window
         {
             if (!_isAudible) return;
             
-            // Overwrite when ring buffer is full, no if check needed
-            // writeIndex is always one step ahead of readIndex
-            
-            var audioFloatBufferAsSpan = _tempAudioFloatBuffer.AsSpan();
-            
             unsafe
             {
                 short* samplePoints = (short*)samples;
@@ -127,17 +130,21 @@ public partial class MainWindow : Window
                 
                 if (samplePoints == null || samplePointsLength == 0) return;
 
-                for (int i = 0; i < samplePointsLength; i++)
+                var audioFloatBuffer = _audioFloatBuffer.AsSpan(0, samplePointsLength);
+                var monoBuffer = _monoAudioFloatBuffer.AsSpan(_monoAudioBufferIdx, samplePointsLength);
+                
+
+                for (int i = 0; i < audioFloatBuffer.Length; i++)
                 {
-                    audioFloatBufferAsSpan[i] = samplePoints[i] / SignedInt16Normalizer;
+                    audioFloatBuffer[i] = samplePoints[i] / SignedInt16Normalizer;
                 }
                 
-                DownmixToMonoForVisualization(audioFloatBufferAsSpan, samplePointsLength, out var nextWriteIdx);
+                DownmixToMonoForVisualization(audioFloatBufferAsSpan, samplePointsLength);
                 
                 // Doesn't throw an exception because we set _isAudible first when playing or restarting the song
                 _audioEngine.Send(audioFloatBufferAsSpan[..samplePointsLength]);
-                
-                Volatile.Write(ref _writeIndex, nextWriteIdx);
+
+                _areSamplesReady.Set();
             }
         }, null, null, null, null);
 
@@ -253,35 +260,32 @@ public partial class MainWindow : Window
         // Spectrum Analyzer
     }
 
-    private void DownmixToMonoForVisualization(Span<float> audioFloatBuffer, int actualLength, out int nextWriteIndex)
+    private void DownmixToMonoForVisualization(Span<float> audioFloatBuffer, int actualLength)
     {
-        int currentWriteIndex = _writeIndex;
-        // int nextWriteIdx = (currentWriteIndex + 1) % RingSize;
-        // int ithSample = 0;
         
         var audioBufferActualLength = audioFloatBuffer[..actualLength];
         int monoSampleCount = audioBufferActualLength.Length / _channels;
         
         
         
-        for (int i = 0; i < monoSampleCount; i++)
-        {
-            if (_floatBufferIdx >= FixedChunk)
-            {
-                _floatBufferIdx = 0;
-                currentWriteIndex = (++currentWriteIndex == 4) ? 0 : currentWriteIndex;
-            }
-            
-            float sum = 0f;
-            int originalIdx = _channels * i;
-        
-            for (int channel = 0; channel < _channels; channel++) sum += audioBufferActualLength[originalIdx + channel];
-        
-            _ringBuffer[currentWriteIndex].Buffer[_floatBufferIdx] = sum / _channels;
-            _floatBufferIdx++;
-        }
-        
-        nextWriteIndex = currentWriteIndex;
+        // for (int i = 0; i < monoSampleCount; i++)
+        // {
+        //     if (_floatBufferIdx >= FixedChunk)
+        //     {
+        //         _floatBufferIdx = 0;
+        //         currentWriteIndex = (++currentWriteIndex == 4) ? 0 : currentWriteIndex;
+        //     }
+        //     
+        //     float sum = 0f;
+        //     int originalIdx = _channels * i;
+        //
+        //     for (int channel = 0; channel < _channels; channel++) sum += audioBufferActualLength[originalIdx + channel];
+        //
+        //     _ringBuffer[currentWriteIndex].Buffer[_floatBufferIdx] = sum / _channels;
+        //     _floatBufferIdx++;
+        // }
+        //
+        // nextWriteIndex = currentWriteIndex;
     }
 
     private double CalculatePeakDb()
