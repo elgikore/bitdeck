@@ -1,14 +1,12 @@
 ﻿﻿// See https://aka.ms/new-console-template for more information
 
 using System.Diagnostics;
-using System.Runtime.InteropServices;
-using NAudio.MediaFoundation;
-using NAudio.Wave;
-using Ownaudio.Core;
-using Ownaudio.Decoders;
-using OwnaudioNET;
-using OwnaudioNET.Mixing;
-using OwnaudioNET.Sources;
+using SoundFlow.Backends.MiniAudio;
+using SoundFlow.Components;
+using SoundFlow.Enums;
+using SoundFlow.Providers;
+using SoundFlow.Structs;
+
 
 string audioPath = Path.GetFullPath("../../../../../../input2.m4a");
 
@@ -17,15 +15,15 @@ string audioPath = Path.GetFullPath("../../../../../../input2.m4a");
 
 // Console.WriteLine(audioPath);
 
-var config = new AudioConfig
-{
-    SampleRate = 48000,
-    Channels = 2,
-    BufferSize = 512
-};
-
-OwnaudioNet.Initialize(config);
-OwnaudioNet.Start();
+// var config = new AudioConfig
+// {
+//     SampleRate = 48000,
+//     Channels = 2,
+//     BufferSize = 512
+// };
+//
+// OwnaudioNet.Initialize(config);
+// OwnaudioNet.Start();
 
 var ffmpeg = new Process
 {
@@ -44,7 +42,39 @@ ffmpeg.Start();
 
 var ffmpegStdout = ffmpeg.StandardOutput.BaseStream;
 
+// 1. Initialize the engine context.
+using var engine = new MiniAudioEngine();
 
+// 2. Define the audio format for playback.
+var format = new AudioFormat
+{
+    Channels = 2,
+    SampleRate = 96000,
+    Format = SampleFormat.F32
+};
+
+// 3. Initialize a specific playback device. Passing `null` uses the system default.
+using var playbackDevice = engine.InitializePlaybackDevice(null, format);
+
+// 4. Create a SoundPlayer, passing the engine and format context.
+// Make sure you replace "path/to/your/audiofile.wav" with the actual path.
+using var dataProvider = new RawDataProvider(ffmpegStdout, SampleFormat.F32, format.SampleRate);
+var player = new SoundPlayer(engine, format, dataProvider);
+
+// 5. Add the player to the device's master mixer.
+playbackDevice.MasterMixer.AddComponent(player);
+
+// 6. Start the device to begin the audio stream.
+playbackDevice.Start();
+
+// 7. Start the player.
+player.Play();
+
+Console.WriteLine($"Playing audio on '{playbackDevice.Info?.Name}'... Press any key to stop.");
+Console.ReadKey();
+
+// 8. Stop the device, which also stops the audio stream.
+playbackDevice.Stop();
 
 
 
