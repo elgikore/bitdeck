@@ -29,8 +29,20 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Reference Include="Ownaudio.Core">
+        <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\ownaudiosharp\2.5.4\lib\net9.0\Ownaudio.Core.dll</HintPath>
+      </Reference>
+      <Reference Include="OwnaudioNET">
+        <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\ownaudiosharp\2.5.4\lib\net9.0\OwnaudioNET.dll</HintPath>
+      </Reference>
       <Reference Include="OxyPlot.Avalonia">
         <HintPath>C:\Users\windowsnotavailable\.nuget\packages\oxyplot.avalonia\2.1.0\lib\netstandard2.0\OxyPlot.Avalonia.dll</HintPath>
       </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Experiments\XPlatformAudioTest\Program.cs">
+        <Link>Experiments\NAudioTest\Program.cs</Link>
+      </Compile>
     </ItemGroup>
 </Project>
