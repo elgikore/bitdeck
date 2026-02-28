@@ -5,8 +5,9 @@ uniform vec2 iResolution;
 uniform float iRms;
 uniform float iMidrange;
 
-const float OFFSET_X = -0.11973195199391995;
-const float OFFSET_Y = 0.6495285294768962;
+const vec2 START_POS = vec2(-0.5, 0.0);
+const vec2 END_POS = vec2(-0.11973195199391995, 0.6495285294768962);
+const float TRANSITION_SECONDS = 3.0;
 const float PI = 3.14159265359;
 
 int maxIterations = 50;
@@ -48,9 +49,12 @@ void main()
 {
     float magnification = (iResolution.y / 3.0) * pow(2.0, 0.0);
     float invMagnification = 1.0 / magnification;
+    
+    float coordInterpolationFactor = smoothstep(0.0, TRANSITION_SECONDS, iTime);
+    vec2 currCoords = mix(START_POS, END_POS, coordInterpolationFactor);
 
-    float im = ((gl_FragCoord.y - (iResolution.y / 2.0)) * -invMagnification) + OFFSET_Y;
-    float re = ((gl_FragCoord.x - (iResolution.x / 2.0)) * invMagnification) + OFFSET_X;
+    float im = ((gl_FragCoord.y - (iResolution.y / 2.0)) * -invMagnification) + currCoords.y;
+    float re = ((gl_FragCoord.x - (iResolution.x / 2.0)) * invMagnification) + currCoords.x;
     
     float escapeRadius = 2.0 + (midrangeBias * 0.3);
 
