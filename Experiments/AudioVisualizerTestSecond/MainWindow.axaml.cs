@@ -24,7 +24,7 @@ public partial class MainWindow : Window
     {
         await Task.Run(() =>
         {
-            string audioPath = Path.GetFullPath("../../../input2Copy.wav");
+            string audioPath = Path.GetFullPath("../../../../../../input2Copy.wav");
                 
             using var engine = new MiniAudioEngine();
             var audioFormat = new AudioFormat() { Channels = 2, Format = SampleFormat.S16, SampleRate = 96000 };
