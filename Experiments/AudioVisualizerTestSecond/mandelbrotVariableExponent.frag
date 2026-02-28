@@ -72,7 +72,10 @@ void main()
     for (i = 0; i < MAX_ITER; i++) {
         magnitude = length(z);
 
-        if (magnitude > escapeRadius) break;
+        if (magnitude > escapeRadius) {
+            i++;
+            break;
+        }
 
         float rPolar = max(magnitude, 1e-10);
 
