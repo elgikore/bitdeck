@@ -11,14 +11,14 @@ const float PI = 3.14159265359;
 const float ESCAPE_RADIUS_ZERO_OR_LESS_POWER = 5.0;
 const float ESCAPE_RADIOUS_DEFAULT = 2.0;
 
-vec3 palette( float t ) {
-    vec3 a = vec3(0.5, 0.5, 0.5);
-    vec3 b = vec3(0.5, 0.5, 0.5);
-    vec3 c = vec3(1.0, 1.0, 1.0);
-    vec3 d = vec3(0.0, 0.0, 0.0);
-
-    return a + b*cos( 6.28318*(c*t+d) );
-}
+//vec3 palette( float t ) {
+//    vec3 a = vec3(0.5, 0.5, 0.5);
+//    vec3 b = vec3(0.5, 0.5, 0.5);
+//    vec3 c = vec3(1.0, 1.0, 1.0);
+//    vec3 d = vec3(0.0, 0.0, 0.0);
+//
+//    return a + b*cos( 6.28318*(c*t+d) );
+//}
 
 
 // out vec4 color instead of layout(location = 0) out vec4 color because Avalonia doesn't support it
@@ -84,7 +84,7 @@ void main()
         z = vec2(updatedZRe, updatedZIm);
     }
 
-    float invNormColorIter = 1 - (float(i) / float(MAX_ITER));
+    float invNormColorIter = (1 - (float(i) / float(MAX_ITER)));
 
     color = vec4(invNormColorIter, invNormColorIter, invNormColorIter, 1.0);
 }
