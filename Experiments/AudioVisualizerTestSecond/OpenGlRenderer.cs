@@ -73,7 +73,7 @@ public class OpenGlRenderer : OpenGlControlBase
             false, 2 * sizeof(float), 0));
         GlCheck.Invoke(_gl, () => _gl.Viewport(0, 0, (uint)Bounds.Width, (uint)Bounds.Height)); // Need because Avalonia doesn't provide it unlike GLFW
 
-        string vertexShader = File.ReadAllText("");
+        string vertexShader = File.ReadAllText(Path.GetFullPath("../../../vertexShader.vert"));
         string fragShader = File.ReadAllText("");
         
         _mainShader = CreateShader(ref vertexShader, ref fragShader);
