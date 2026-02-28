@@ -64,11 +64,19 @@ public partial class MainWindow : Window
                 if (spectrumData.Length > 0)
                 {
                     float sum = 0;
-                    
-                    foreach (var t in spectrumData) sum += t;
+                    float max = 0;
+
+                    foreach (var t in spectrumData)
+                    {
+                        if (t > max) max = t;
+                        
+                        sum += t;
+                    }
 
                     float average = sum / binLength;
-                    float normalizedMag = average / sum;
+                    float normalizedMag = average / max;
+
+                    Console.WriteLine(normalizedMag);
                     
                     GlRenderer.CurrentMidrangeAvgNormLevel = normalizedMag;
                 }
