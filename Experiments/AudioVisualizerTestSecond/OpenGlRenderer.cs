@@ -16,7 +16,7 @@ public class OpenGlRenderer : OpenGlControlBase
     private int _iTimeLocation;
     private int _iResolutionLocation;
     private int _iRmsLocation;
-    private int _midrangeNormAvgLocation;
+    private int _iMidrangeNormAvgLocation;
     
     private readonly Stopwatch _iTime = new();
     public bool IsPlaying { get; private set; }
@@ -94,19 +94,25 @@ public class OpenGlRenderer : OpenGlControlBase
         // iRMS
         _iRmsLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iRms"));
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iRmsLocation, 0f));
+        
+        // iMidrange
+        _iMidrangeNormAvgLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iMidrange"));
+        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iMidrangeNormAvgLocation, 0f));
     }
 
     protected override unsafe void OnOpenGlRender(GlInterface gl, int fb)
     {
         float smoothedRms;
+        float smoothMidrangeAvgNorm;
         GlCheck.Invoke(_gl, () => _gl.Clear(ClearBufferMask.ColorBufferBit));
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTimeLocation, (float)_iTime.Elapsed.TotalSeconds)); // Need because it changes over time
         GlCheck.Invoke(_gl, () => _gl.DrawElements(GLEnum.Triangles, 6, GLEnum.UnsignedInt, null));
         
         if (!IsPlaying && _prevRmsLevel > 1e-4f)
         {
-            smoothedRms = SmoothedRms(0.05f);
+            smoothedRms = Smoothing(_prevRmsLevel, CurrentRmsLevel, 0.05f);
             GlCheck.Invoke(_gl, () => _gl.Uniform1(_iRmsLocation, smoothedRms));
+            GlCheck.Invoke(_gl, () => _gl.Uniform1(_iMidrangeNormAvgLocation, 0f));
             _prevRmsLevel = smoothedRms;
             
             Dispatcher.UIThread.Post(RequestNextFrameRendering); // To make it loop
@@ -125,16 +131,20 @@ public class OpenGlRenderer : OpenGlControlBase
         if (!IsPlaying && _prevRmsLevel == 0f) return;
         
 
-        smoothedRms = SmoothedRms(0.1f);
+        smoothedRms = Smoothing(_prevRmsLevel, CurrentRmsLevel, 0.1f);
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iRmsLocation, smoothedRms));
         _prevRmsLevel = smoothedRms;
+
+        smoothMidrangeAvgNorm = Smoothing(_prevMidrangeAvgNormLevel, CurrentMidrangeAvgNormLevel, 0.1f);
+        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iMidrangeNormAvgLocation, smoothMidrangeAvgNorm));
+        _prevMidrangeAvgNormLevel = smoothMidrangeAvgNorm;
         
         Dispatcher.UIThread.Post(RequestNextFrameRendering); // To make it loop
     }
 
-    private float SmoothedRms(float smoothingFactor)
+    private float Smoothing(float prevValue, float currValue, float smoothingFactor)
     {
-        return ((1 - smoothingFactor) * _prevRmsLevel) + (smoothingFactor * CurrentRmsLevel);
+        return ((1 - smoothingFactor) * prevValue) + (smoothingFactor * currValue);
     }
 
     public void Start()

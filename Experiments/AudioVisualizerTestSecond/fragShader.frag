@@ -3,6 +3,7 @@
 uniform float iTime;
 uniform vec2 iResolution;
 uniform float iRms;
+uniform float iMidrange;
 
 const float OFFSET_X = 0.0;
 const float OFFSET_Y = 0.0;
@@ -51,11 +52,11 @@ void main()
 
     float im = ((gl_FragCoord.y - (iResolution.y / 2.0)) * -invMagnification) + OFFSET_Y;
     float re = ((gl_FragCoord.x - (iResolution.x / 2.0)) * invMagnification) + OFFSET_X;
-//    float powerRe = 2.0;
+    float powerRe = 2.0;
     float powerIm = 0.0;
 
 
-    float powerRe = 10.0 * cos(iTime * 0.20);
+//    float powerRe = 10.0 * cos(iTime * 0.20);
 //    float powerIm = sin(iTime * 0.20);
     
     // when power >= 1, output 1 for LERP to output radius = 2 (B)
@@ -70,7 +71,7 @@ void main()
     for (i = 0; i < MAX_ITER; i++) {
         magnitude = length(z);
 
-        if (magnitude > escapeRadius + (0.1 * iRms)) break;
+        if (magnitude > escapeRadius + (iMidrange * 5)) break;
 
         float rPolar = max(magnitude, 1e-10);
 
