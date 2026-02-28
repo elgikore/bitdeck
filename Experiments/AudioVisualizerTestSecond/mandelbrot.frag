@@ -7,10 +7,11 @@ uniform float iMidrange;
 
 const vec2 START_POS = vec2(-0.5, 0.0);
 const vec2 END_POS = vec2(-0.11973195199391995, 0.6495285294768962);
-const float TRANSITION_SECONDS = 3.0;
+const float TRANSITION_SECONDS = 10.0;
+const float MIN_ITER = 30;
+const float ITER_LIMIT = 3200;
+const float LOG_2_ZOOM_CONSTANT = (ITER_LIMIT - MIN_ITER) / 16.0; 
 const float PI = 3.14159265359;
-
-int maxIterations = 50;
 
 //vec3 palette( float t ) {
 //    vec3 a = vec3(0.5, 0.5, 0.5);
@@ -47,8 +48,10 @@ float atan2(vec2 theta) {
 
 void main()
 {
-    float magnification = (iResolution.y / 3.0) * pow(2.0, 0.0);
+    float zoomFactor = iTime * 0.3;
+    float magnification = (iResolution.y / 3.0) * pow(2.0, zoomFactor);
     float invMagnification = 1.0 / magnification;
+    int maxIterations = int(floor(50 + (LOG_2_ZOOM_CONSTANT * zoomFactor)));
     
     float coordInterpolationFactor = smoothstep(0.0, TRANSITION_SECONDS, iTime);
     vec2 currCoords = mix(START_POS, END_POS, coordInterpolationFactor);
@@ -56,7 +59,7 @@ void main()
     float im = ((gl_FragCoord.y - (iResolution.y / 2.0)) * -invMagnification) + currCoords.y;
     float re = ((gl_FragCoord.x - (iResolution.x / 2.0)) * invMagnification) + currCoords.x;
     
-    float escapeRadius = 2.0 + (midrangeBias * 0.3);
+    float escapeRadius = 2.0 + (iMidrange * 0.3);
 
     vec2 z = vec2(re, im);
     float magnitude;
@@ -67,14 +70,9 @@ void main()
 
         if (magnitude > escapeRadius) break;
 
-        float rPolar = max(magnitude, 1e-10);
-
-        float theta = atan2(z);
-        float rReImPower = pow(rPolar, powerRe) * exp(-powerIm * theta);
-        float pReImTheta = (powerRe * theta) + (powerIm * log(rPolar));
-
-        float updatedZIm = (rReImPower * sin(pReImTheta)) + im;
-        float updatedZRe = (rReImPower * cos(pReImTheta)) + re;
+        vec2 zSquared = pow(z, vec2(2.0, 2.0));
+        float updatedZIm = (2.0 * z.x * z.y) + im;
+        float updatedZRe = zSquared.x - zSquared.y + re;
 
         z = vec2(updatedZRe, updatedZIm);
     }
