@@ -52,17 +52,18 @@ void main()
 
     float im = ((gl_FragCoord.y - (iResolution.y / 2.0)) * -invMagnification) + OFFSET_Y;
     float re = ((gl_FragCoord.x - (iResolution.x / 2.0)) * invMagnification) + OFFSET_X;
-    float powerRe = 2.0;
-    float powerIm = 0.0;
+//    float powerRe = 2.0;
+//    float powerIm = 0.0;
 
-
-//    float powerRe = 10.0 * cos(iTime * 0.20);
-//    float powerIm = sin(iTime * 0.20);
+    float speedFactor = 0.2 + iRms * 0.8;
+    float powerRe = 10.0 * cos(iTime * 0.5 * speedFactor);
+    float powerIm = sin(iTime * 0.50 * speedFactor);
     
     // when power >= 1, output 1 for LERP to output radius = 2 (B)
     // when power <= 0, output 0 for LERP to output radius = 5 (A)
     float powerToRadiusClamp = smoothstep(0.0, 1.0, powerRe);  
-    float escapeRadius = mix(ESCAPE_RADIUS_ZERO_OR_LESS_POWER, ESCAPE_RADIOUS_DEFAULT, powerToRadiusClamp);
+    float midrangeBias = + mix(iMidrange * 10, iMidrange, powerToRadiusClamp);
+    float escapeRadius = mix(ESCAPE_RADIUS_ZERO_OR_LESS_POWER, ESCAPE_RADIOUS_DEFAULT, powerToRadiusClamp) + midrangeBias;
 
     vec2 z = vec2(re, im);
     float magnitude;
@@ -71,7 +72,7 @@ void main()
     for (i = 0; i < MAX_ITER; i++) {
         magnitude = length(z);
 
-        if (magnitude > escapeRadius + (iMidrange * 2)) break;
+        if (magnitude > escapeRadius) break;
 
         float rPolar = max(magnitude, 1e-10);
 
