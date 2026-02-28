@@ -55,14 +55,14 @@ void main()
 //    float powerRe = 2.0;
 //    float powerIm = 0.0;
 
-    float speedFactor = 0.2 + iRms * 0.8;
-    float powerRe = 10.0 * cos(iTime * 0.5 * speedFactor);
-    float powerIm = sin(iTime * 0.50 * speedFactor);
+//    float speedFactor = 0.2 + iRms * 0.8;
+    float powerRe = 5.0 * cos(iTime * 0.2);
+    float powerIm = sin(iTime * 0.2);
     
     // when power >= 1, output 1 for LERP to output radius = 2 (B)
     // when power <= 0, output 0 for LERP to output radius = 5 (A)
     float powerToRadiusClamp = smoothstep(0.0, 1.0, powerRe);  
-    float midrangeBias = + mix(iMidrange * 10, iMidrange, powerToRadiusClamp);
+    float midrangeBias = + mix(iMidrange * 10, iMidrange, powerToRadiusClamp) * 0.3;
     float escapeRadius = mix(ESCAPE_RADIUS_ZERO_OR_LESS_POWER, ESCAPE_RADIOUS_DEFAULT, powerToRadiusClamp) + midrangeBias;
 
     vec2 z = vec2(re, im);
