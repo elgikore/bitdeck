@@ -100,7 +100,7 @@ public class OpenGlRenderer : OpenGlControlBase
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTimeLocation, (float)_iTime.Elapsed.TotalSeconds)); // Need because it changes over time
         GlCheck.Invoke(_gl, () => _gl.DrawElements(GLEnum.Triangles, 6, GLEnum.UnsignedInt, null));
 
-        float smoothedRms = SmoothedRms(0.05f);
+        float smoothedRms = SmoothedRms(0.1f);
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iRmsLocation, smoothedRms));
         _prevRmsLevel = smoothedRms;
         
