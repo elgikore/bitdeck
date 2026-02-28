@@ -24,7 +24,7 @@ public partial class MainWindow : Window
     {
         await Task.Run(() =>
         {
-            string audioPath = Path.GetFullPath("../../../../../../input2Copy.wav");
+            string audioPath = Path.GetFullPath("../../../../../../input2CopyShort.wav");
                 
             using var engine = new MiniAudioEngine();
             var audioFormat = new AudioFormat() { Channels = 2, Format = SampleFormat.S16, SampleRate = 96000 };
@@ -46,7 +46,6 @@ public partial class MainWindow : Window
             timer.Elapsed += (_, _) =>
             {
                 GlRenderer.CurrentRmsLevel = levelAnalyzer.Rms;
-                Console.WriteLine(GlRenderer.CurrentRmsLevel);
             };
             
 
@@ -58,10 +57,11 @@ public partial class MainWindow : Window
                     timer.Start();
                 }
                 
-                Thread.Sleep(TimeSpan.FromSeconds(5));
+                Thread.Sleep(100);
             }
             
             GlRenderer.Stop();
+            timer.Stop();
         });
     }
 }

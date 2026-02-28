@@ -51,11 +51,11 @@ void main()
 
     float im = ((gl_FragCoord.y - (iResolution.y / 2.0)) * -invMagnification) + OFFSET_Y;
     float re = ((gl_FragCoord.x - (iResolution.x / 2.0)) * invMagnification) + OFFSET_X;
-    float powerRe = 2.0;
+//    float powerRe = 2.0;
     float powerIm = 0.0;
 
 
-//    float powerRe = 2.0 * cos(iTime * 0.20);
+    float powerRe = 10.0 * cos(iTime * 0.20);
 //    float powerIm = sin(iTime * 0.20);
     
     // when power >= 1, output 1 for LERP to output radius = 2 (B)
@@ -84,7 +84,7 @@ void main()
         z = vec2(updatedZRe, updatedZIm);
     }
 
-    float invNormColorIter = (1 - (float(i) / float(MAX_ITER)));
+    float invNormColorIter = (1 - (float(i) / float(MAX_ITER))) * smoothstep(0.0, 0.05, iRms);
 
     color = vec4(invNormColorIter, invNormColorIter, invNormColorIter, 1.0);
 }

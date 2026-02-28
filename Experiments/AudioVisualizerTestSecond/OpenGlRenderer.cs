@@ -94,13 +94,34 @@ public class OpenGlRenderer : OpenGlControlBase
 
     protected override unsafe void OnOpenGlRender(GlInterface gl, int fb)
     {
-        if (!IsPlaying) return;
-        
+        float smoothedRms;
         GlCheck.Invoke(_gl, () => _gl.Clear(ClearBufferMask.ColorBufferBit));
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTimeLocation, (float)_iTime.Elapsed.TotalSeconds)); // Need because it changes over time
         GlCheck.Invoke(_gl, () => _gl.DrawElements(GLEnum.Triangles, 6, GLEnum.UnsignedInt, null));
+        
+        if (!IsPlaying && _prevRmsLevel > 1e-4f)
+        {
+            smoothedRms = SmoothedRms(0.05f);
+            GlCheck.Invoke(_gl, () => _gl.Uniform1(_iRmsLocation, smoothedRms));
+            _prevRmsLevel = smoothedRms;
+            
+            Dispatcher.UIThread.Post(RequestNextFrameRendering); // To make it loop
+            return;
+        }
 
-        float smoothedRms = SmoothedRms(0.1f);
+        if (!IsPlaying && _prevRmsLevel < 1e-4f)
+        {
+            _prevRmsLevel = 0;
+            _iTime.Reset();
+            GlCheck.Invoke(_gl, () => _gl.Clear(ClearBufferMask.ColorBufferBit));
+            Dispatcher.UIThread.Post(RequestNextFrameRendering); // To make it loop
+            return;
+        }
+        
+        if (!IsPlaying && _prevRmsLevel == 0f) return;
+        
+
+        smoothedRms = SmoothedRms(0.1f);
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iRmsLocation, smoothedRms));
         _prevRmsLevel = smoothedRms;
         
@@ -122,7 +143,7 @@ public class OpenGlRenderer : OpenGlControlBase
     public void Stop()
     {
         IsPlaying = false;
-        _iTime.Stop();
+        CurrentRmsLevel = 0;
         Dispatcher.UIThread.Post(RequestNextFrameRendering);
     }
     
