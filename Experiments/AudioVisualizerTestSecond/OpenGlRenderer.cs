@@ -114,6 +114,10 @@ public class OpenGlRenderer : OpenGlControlBase
             GlCheck.Invoke(_gl, () => _gl.Uniform1(_iRmsLocation, smoothedRms));
             _prevRmsLevel = smoothedRms;
             
+            smoothMidrangeAvgNorm = Smoothing(_prevMidrangeAvgNormLevel, CurrentMidrangeAvgNormLevel, 0.4f);
+            GlCheck.Invoke(_gl, () => _gl.Uniform1(_iMidrangeNormAvgLocation, smoothMidrangeAvgNorm));
+            _prevMidrangeAvgNormLevel = smoothMidrangeAvgNorm;
+            
             Dispatcher.UIThread.Post(RequestNextFrameRendering); // To make it loop
             return;
         }
@@ -135,7 +139,7 @@ public class OpenGlRenderer : OpenGlControlBase
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iRmsLocation, smoothedRms));
         _prevRmsLevel = smoothedRms;
 
-        smoothMidrangeAvgNorm = Smoothing(_prevMidrangeAvgNormLevel, CurrentMidrangeAvgNormLevel, 0.3f);
+        smoothMidrangeAvgNorm = Smoothing(_prevMidrangeAvgNormLevel, CurrentMidrangeAvgNormLevel, 0.35f);
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iMidrangeNormAvgLocation, smoothMidrangeAvgNorm));
         _prevMidrangeAvgNormLevel = smoothMidrangeAvgNorm;
         
@@ -158,6 +162,7 @@ public class OpenGlRenderer : OpenGlControlBase
     {
         IsPlaying = false;
         CurrentRmsLevel = 0;
+        CurrentMidrangeAvgNormLevel = 0;
         Dispatcher.UIThread.Post(RequestNextFrameRendering);
     }
     

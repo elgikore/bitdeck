@@ -24,10 +24,10 @@ public partial class MainWindow : Window
     {
         await Task.Run(() =>
         {
-            string audioPath = Path.GetFullPath("../../../../../../input2CopyShort.wav");
+            string audioPath = Path.GetFullPath("../../../../../../input.wav");
                 
             using var engine = new MiniAudioEngine();
-            var audioFormat = new AudioFormat() { Channels = 2, Format = SampleFormat.S16, SampleRate = 96000 };
+            var audioFormat = new AudioFormat() { Channels = 2, Format = SampleFormat.S16, SampleRate = 48000 };
             
             using var device = engine.InitializePlaybackDevice(null, audioFormat);
             using var dataProvider = new StreamDataProvider(engine, new FileStream(audioPath, FileMode.Open));
@@ -48,40 +48,40 @@ public partial class MainWindow : Window
             player.Play();
 
             const float startHz = 300;
-            const float endHz = 1000;
+            const float endHz = 4000;
             int binStartIdx = (int)MathF.Floor((startHz * fftSize) / audioFormat.SampleRate);
             int binEndIdx = (int)MathF.Floor((endHz * fftSize) / audioFormat.SampleRate);
             int binLength = binEndIdx - binStartIdx + 1;
             
-            
-            var timer = new System.Timers.Timer(100f);
+            var timer = new System.Timers.Timer(TimeSpan.FromMilliseconds(100));
             timer.Elapsed += (_, _) =>
             {
                 // Get the spectrum data from the analyzer.
-                var spectrumData = spectrumAnalyzer.SpectrumData.AsSpan(binStartIdx, binLength);
+                if (spectrumAnalyzer.SpectrumData.Length == 0) return;
+                if (spectrumAnalyzer.SpectrumData.Length < binLength) return;
+                
+                var spectrumData = spectrumAnalyzer.SpectrumData.AsSpan(binStartIdx, 
+                    binLength);
+                
+                float sum = 0;
+                float max = 0;
 
-                // Print the magnitude of the first few frequency bins.
-                if (spectrumData.Length > 0)
+                foreach (var t in spectrumData)
                 {
-                    float sum = 0;
-                    float max = 0;
-
-                    foreach (var t in spectrumData)
-                    {
-                        if (t > max) max = t;
+                    if (t > max) max = t;
                         
-                        sum += t;
-                    }
-
-                    float average = sum / binLength;
-                    float normalizedMag = average / max;
-
-                    Console.WriteLine(normalizedMag);
-                    
-                    GlRenderer.CurrentMidrangeAvgNormLevel = normalizedMag;
+                    sum += t;
                 }
+
+                float average = sum / binLength;
+                float normalizedMag = average / max;
+
+                // Console.WriteLine(normalizedMag);
                 
-                
+                if (float.IsNaN(normalizedMag)) return;
+                    
+                const float noiseGateMidrange = 0.055f; // Stop very small fluctuations
+                GlRenderer.CurrentMidrangeAvgNormLevel = (normalizedMag <= noiseGateMidrange) ? 0 : normalizedMag;
                 GlRenderer.CurrentRmsLevel = levelAnalyzer.Rms;
             };
             

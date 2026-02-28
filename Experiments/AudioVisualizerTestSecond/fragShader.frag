@@ -71,7 +71,7 @@ void main()
     for (i = 0; i < MAX_ITER; i++) {
         magnitude = length(z);
 
-        if (magnitude > escapeRadius + (iMidrange * 5)) break;
+        if (magnitude > escapeRadius + (iMidrange * 2)) break;
 
         float rPolar = max(magnitude, 1e-10);
 
@@ -85,7 +85,7 @@ void main()
         z = vec2(updatedZRe, updatedZIm);
     }
 
-    float invNormColorIter = (1 - (float(i) / float(MAX_ITER))) * smoothstep(0.0, 0.05, iRms);
+    float invNormColorIter = (1 - (float(i) / float(MAX_ITER))) * smoothstep(0.0, 0.01, iRms);
 
     color = vec4(invNormColorIter, invNormColorIter, invNormColorIter, 1.0);
 }
