@@ -16,11 +16,15 @@ public class OpenGlRenderer : OpenGlControlBase
     private int _iTimeLocation;
     private int _iResolutionLocation;
     private int _iRmsLocation;
+    private int _midrangeNormAvgLocation;
     
     private readonly Stopwatch _iTime = new();
     public bool IsPlaying { get; private set; }
     
     public float CurrentRmsLevel { get; set; }
+    public float CurrentMidrangeAvgNormLevel { get; set; }
+    
+    private float _prevMidrangeAvgNormLevel;
     private float _prevRmsLevel;
     
     protected override unsafe void OnOpenGlInit(GlInterface gl)

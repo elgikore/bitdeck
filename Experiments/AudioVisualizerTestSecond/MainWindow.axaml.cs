@@ -35,16 +35,45 @@ public partial class MainWindow : Window
 
             var levelAnalyzer = new LevelMeterAnalyzer(audioFormat);
 
+            int fftSize = 2048;
+            var spectrumAnalyzer = new SpectrumAnalyzer(audioFormat, fftSize);
+            
+            player.AddAnalyzer(spectrumAnalyzer);
+
             // Attach the analyzer to the player.
             player.AddAnalyzer(levelAnalyzer);
             
             device.MasterMixer.AddComponent(player);
             device.Start();
             player.Play();
+
+            const float startHz = 300;
+            const float endHz = 1000;
+            int binStartIdx = (int)MathF.Floor((startHz * fftSize) / audioFormat.SampleRate);
+            int binEndIdx = (int)MathF.Floor((endHz * fftSize) / audioFormat.SampleRate);
+            int binLength = binEndIdx - binStartIdx + 1;
+            
             
             var timer = new System.Timers.Timer(100f);
             timer.Elapsed += (_, _) =>
             {
+                // Get the spectrum data from the analyzer.
+                var spectrumData = spectrumAnalyzer.SpectrumData.AsSpan(binStartIdx, binLength);
+
+                // Print the magnitude of the first few frequency bins.
+                if (spectrumData.Length > 0)
+                {
+                    float sum = 0;
+                    
+                    foreach (var t in spectrumData) sum += t;
+
+                    float average = sum / binLength;
+                    float normalizedMag = average / sum;
+                    
+                    GlRenderer.CurrentMidrangeAvgNormLevel = normalizedMag;
+                }
+                
+                
                 GlRenderer.CurrentRmsLevel = levelAnalyzer.Rms;
             };
             
