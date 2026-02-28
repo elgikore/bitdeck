@@ -13,12 +13,12 @@ public class OpenGlRenderer : OpenGlControlBase
 {
     private static GL _gl = null!;
     private uint _mainShader;
-    private int _iTimeLocation;
+    private int _iZoomFactorLocation;
     private int _iResolutionLocation;
     private int _iRmsLocation;
     private int _iMidrangeNormAvgLocation;
     
-    private readonly Stopwatch _iTime = new();
+    private readonly Stopwatch _iZoomFactor = new();
     public bool IsPlaying { get; private set; }
     
     public float CurrentRmsLevel { get; set; }
@@ -78,7 +78,7 @@ public class OpenGlRenderer : OpenGlControlBase
         GlCheck.Invoke(_gl, () => _gl.Viewport(0, 0, (uint)Bounds.Width, (uint)Bounds.Height)); // Need because Avalonia doesn't provide it unlike GLFW
 
         string vertexShader = File.ReadAllText(Path.GetFullPath("../../../vertexShader.vert"));
-        string fragShader = File.ReadAllText(Path.GetFullPath("../../../mandelbrotVariableExponent.frag"));
+        string fragShader = File.ReadAllText(Path.GetFullPath("../../../mandelbrot.frag"));
         
         _mainShader = CreateShader(ref vertexShader, ref fragShader);
         GlCheck.Invoke(_gl, () => _gl.UseProgram(_mainShader));
@@ -87,9 +87,9 @@ public class OpenGlRenderer : OpenGlControlBase
         _iResolutionLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iResolution"));
         GlCheck.Invoke(_gl, () => _gl.Uniform2(_iResolutionLocation, (float)Bounds.Width, (float)Bounds.Height));
         
-        // iTime
-        _iTimeLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iTime"));
-        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTimeLocation, 0f));
+        // iZoomFactor
+        _iZoomFactorLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iZoomFactor"));
+        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iZoomFactorLocation, 0f));
         
         // iRMS
         _iRmsLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iRms"));
@@ -105,7 +105,11 @@ public class OpenGlRenderer : OpenGlControlBase
         float smoothedRms;
         float smoothMidrangeAvgNorm;
         GlCheck.Invoke(_gl, () => _gl.Clear(ClearBufferMask.ColorBufferBit));
-        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTimeLocation, (float)_iTime.Elapsed.TotalSeconds)); // Need because it changes over time
+
+        float iTime = (float)_iZoomFactor.Elapsed.TotalSeconds;
+        float zoomFactor = 17f * MathF.Sin(iTime * 0.035f);
+        
+        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iZoomFactorLocation, zoomFactor)); // Need because it changes over time
         GlCheck.Invoke(_gl, () => _gl.DrawElements(GLEnum.Triangles, 6, GLEnum.UnsignedInt, null));
         
         if (!IsPlaying && _prevRmsLevel > 1e-4f)
@@ -126,7 +130,7 @@ public class OpenGlRenderer : OpenGlControlBase
         {
             _prevRmsLevel = 0;
             _prevMidrangeAvgNormLevel = 0;
-            _iTime.Reset();
+            _iZoomFactor.Reset();
             GlCheck.Invoke(_gl, () => _gl.Clear(ClearBufferMask.ColorBufferBit));
             Dispatcher.UIThread.Post(RequestNextFrameRendering); // To make it loop
             return;
@@ -154,7 +158,7 @@ public class OpenGlRenderer : OpenGlControlBase
     public void Start()
     {
         IsPlaying = true;
-        _iTime.Start();
+        _iZoomFactor.Start();
         Dispatcher.UIThread.Post(RequestNextFrameRendering);
     }
 
@@ -223,14 +227,14 @@ public class OpenGlRenderer : OpenGlControlBase
     
     protected override void OnOpenGlDeinit(GlInterface gl)
     {
-        _iTime.Stop();
+        _iZoomFactor.Stop();
         _gl.DeleteShader(_mainShader);
         base.OnOpenGlDeinit(gl);
     }
 
     protected override void OnOpenGlLost()
     {
-        _iTime.Stop();
+        _iZoomFactor.Stop();
         _gl.DeleteShader(_mainShader);
         base.OnOpenGlLost();
     }
