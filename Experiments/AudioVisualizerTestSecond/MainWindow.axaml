@@ -5,5 +5,10 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="AudioVisualizerTestSecond.MainWindow"
         Title="AudioVisualizerTestSecond">
-    Welcome to Avalonia!
+    <Grid RowDefinitions="*, 50">
+        <openGlPractice:OpenGlRenderer Name="GlRenderer"></openGlPractice:OpenGlRenderer>
+        <Button Grid.Row="1" Click="Button_OnClick" HorizontalAlignment="Center" VerticalAlignment="Center">
+            Play Visualizer
+        </Button>
+    </Grid>
 </Window>
