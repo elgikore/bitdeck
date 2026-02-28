@@ -68,7 +68,10 @@ void main()
     for (i = 0; i < maxIterations; i++) {
         magnitude = length(z);
 
-        if (magnitude > escapeRadius) break;
+        if (magnitude > escapeRadius) {
+            i++;
+            break;
+        }
 
         vec2 zSquared = pow(z, vec2(2.0, 2.0));
         float updatedZIm = (2.0 * z.x * z.y) + im;
@@ -77,7 +80,9 @@ void main()
         z = vec2(updatedZRe, updatedZIm);
     }
 
-    float invNormColorIter = (1 - (float(i) / float(maxIterations))) * smoothstep(0.0, 0.01, iRms);
+    const float VERY_DARK_GRAY_NORM = 20.0 / 255.0;
+    float normIterations = VERY_DARK_GRAY_NORM + (float(i) / float(maxIterations));    
+    vec3 iterationColor = (i == maxIterations) ? vec3(0.0, 0.0, 0.0) : vec3(normIterations, normIterations, normIterations);
 
-    color = vec4(invNormColorIter, invNormColorIter, invNormColorIter, 1.0);
+    color = vec4(iterationColor, smoothstep(0.0, 0.01, iRms));
 }
