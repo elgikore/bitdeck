@@ -61,7 +61,7 @@ void main()
     
     float escapeRadius = 2.0 + (iMidrange * 0.3);
 
-    vec2 z = vec2(re, im);
+    vec2 z = vec2(0, 0);
     float magnitude;
     int i;
 
