@@ -8,12 +8,15 @@ uniform float iTotalDuration;
 
 const vec2 START_POS_MANDELBROT = vec2(-0.5, 0.0);
 const vec2 START_POS_JULIA = vec2(0.0, 0.0);
-const vec2 END_POS = vec2(-0.11973195199391995, 0.6495285294768962);
+
+//const vec2 END_POS = vec2(-0.11973195199391995, 0.6495285294768962);
+const vec2 END_POS = vec2(-0.7329251850304637, -0.2161912471140397);
 const float MIN_ITER = 30;
 const float ITER_LIMIT = 2000;
 const float LOG_2_ZOOM_CONSTANT = (ITER_LIMIT - MIN_ITER) / 16.0; 
 const float PI = 3.14159265359;
-
+const float START_MORPH = 0.49;
+const float END_MORPH = 0.51;
 
 
 // out vec4 color instead of layout(location = 0) out vec4 color because Avalonia doesn't support it
@@ -39,23 +42,32 @@ void main()
     float im = ((gl_FragCoord.y - (iResolution.y / 2.0)) * -invMagnification) + currCoords.y;
     float re = ((gl_FragCoord.x - (iResolution.x / 2.0)) * invMagnification) + currCoords.x;
     
-    float escapeRadius = 2.0 + (iMidrange * 0.3);
+    float escapeRadius = 2.0 + iMidrange;
 
     vec2 z0Mandelbrot = vec2(0.0, 0.0);
     vec2 z0Julia = vec2(re, im);
     vec2 cMandelbrot = vec2(re, im);
     vec2 cJulia = END_POS;
+    vec4 toWhiteFlash = vec4(0.0);
     
     vec2 z;
     vec2 c;
     
-    if (zoomDurationFactor < 0.45) {
+    if (zoomDurationFactor < START_MORPH) {
         z = z0Mandelbrot;
         c = cMandelbrot;
-    } else if (zoomDurationFactor >= 0.45 && zoomDurationFactor < 0.55){
-        z = mix(z0Mandelbrot, z0Julia, smoothstep(0.45, 0.55, zoomDurationFactor));
-        c = mix(cMandelbrot, cJulia, smoothstep(0.45, 0.55, zoomDurationFactor));
+    } else if (zoomDurationFactor >= START_MORPH && zoomDurationFactor < END_MORPH){
+        // Animating z is very flickery so we only animate c and some "practical effects"
+        float cTransition = smoothstep(START_MORPH, END_MORPH, zoomDurationFactor);
+        toWhiteFlash = vec4(cTransition);
+        
+        c = mix(cMandelbrot, cJulia, cTransition);
     } else {
+        // Fade out to Julia at first
+        float morphDuration = END_MORPH - START_MORPH;
+        float cTransition = mix(1.0, 0.0, smoothstep(END_MORPH, END_MORPH + morphDuration, zoomDurationFactor));
+        toWhiteFlash = vec4(cTransition);
+        
         z = z0Julia;
         c = cJulia;
     }
@@ -82,5 +94,7 @@ void main()
     float normIterations = VERY_DARK_GRAY_NORM + (float(i) / float(maxIterations));    
     vec3 iterationColor = (i == maxIterations) ? vec3(0.0, 0.0, 0.0) : vec3(normIterations, normIterations, normIterations);
 
-    color = vec4(iterationColor, smoothstep(0.0, 0.01, iRms));
+    vec4 finalColor = clamp(vec4(iterationColor, smoothstep(0.0, 0.01, iRms)) + toWhiteFlash, 0.0, 1.0);
+    
+    color = finalColor;
 }
