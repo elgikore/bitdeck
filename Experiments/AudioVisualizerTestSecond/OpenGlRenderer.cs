@@ -13,20 +13,24 @@ public class OpenGlRenderer : OpenGlControlBase
 {
     private static GL _gl = null!;
     private uint _mainShader;
-    private int _iZoomFactorLocation;
+    private int _iTimeLocation;
     private int _iResolutionLocation;
     private int _iRmsLocation;
     private int _iMidrangeNormAvgLocation;
     
-    private readonly Stopwatch _iZoomFactor = new();
+    private readonly Stopwatch _iTime = new();
     public bool IsPlaying { get; private set; }
-    
+
+    public float TotalDurationSeconds { get; set; }
+
     public float CurrentRmsLevel { get; set; }
     public float CurrentMidrangeAvgNormLevel { get; set; }
     
     private float _prevMidrangeAvgNormLevel;
     private float _prevRmsLevel;
-    
+    private int _iTotalDurationLocation;
+    private float _totalDurationSeconds;
+
     protected override unsafe void OnOpenGlInit(GlInterface gl)
     {
         base.OnOpenGlInit(gl);
@@ -87,9 +91,9 @@ public class OpenGlRenderer : OpenGlControlBase
         _iResolutionLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iResolution"));
         GlCheck.Invoke(_gl, () => _gl.Uniform2(_iResolutionLocation, (float)Bounds.Width, (float)Bounds.Height));
         
-        // iZoomFactor
-        _iZoomFactorLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iZoomFactor"));
-        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iZoomFactorLocation, 0f));
+        // iTime
+        _iTimeLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iTime"));
+        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTimeLocation, 0f));
         
         // iRMS
         _iRmsLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iRms"));
@@ -98,6 +102,10 @@ public class OpenGlRenderer : OpenGlControlBase
         // iMidrange
         _iMidrangeNormAvgLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iMidrange"));
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iMidrangeNormAvgLocation, 0f));
+        
+        // iTotalDuration
+        _iTotalDurationLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iTotalDuration"));
+        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTotalDurationLocation, TotalDurationSeconds));
     }
 
     protected override unsafe void OnOpenGlRender(GlInterface gl, int fb)
@@ -105,11 +113,8 @@ public class OpenGlRenderer : OpenGlControlBase
         float smoothedRms;
         float smoothMidrangeAvgNorm;
         GlCheck.Invoke(_gl, () => _gl.Clear(ClearBufferMask.ColorBufferBit));
-
-        float iTime = (float)_iZoomFactor.Elapsed.TotalSeconds;
-        float zoomFactor = 17f * MathF.Sin(iTime * 0.035f);
-        
-        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iZoomFactorLocation, zoomFactor)); // Need because it changes over time
+        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTotalDurationLocation, TotalDurationSeconds));
+        GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTimeLocation, (float)_iTime.Elapsed.TotalSeconds)); // Need because it changes over time
         GlCheck.Invoke(_gl, () => _gl.DrawElements(GLEnum.Triangles, 6, GLEnum.UnsignedInt, null));
         
         if (!IsPlaying && _prevRmsLevel > 1e-4f)
@@ -130,7 +135,7 @@ public class OpenGlRenderer : OpenGlControlBase
         {
             _prevRmsLevel = 0;
             _prevMidrangeAvgNormLevel = 0;
-            _iZoomFactor.Reset();
+            _iTime.Reset();
             GlCheck.Invoke(_gl, () => _gl.Clear(ClearBufferMask.ColorBufferBit));
             Dispatcher.UIThread.Post(RequestNextFrameRendering); // To make it loop
             return;
@@ -158,7 +163,7 @@ public class OpenGlRenderer : OpenGlControlBase
     public void Start()
     {
         IsPlaying = true;
-        _iZoomFactor.Start();
+        _iTime.Start();
         Dispatcher.UIThread.Post(RequestNextFrameRendering);
     }
 
@@ -227,14 +232,14 @@ public class OpenGlRenderer : OpenGlControlBase
     
     protected override void OnOpenGlDeinit(GlInterface gl)
     {
-        _iZoomFactor.Stop();
+        _iTime.Stop();
         _gl.DeleteShader(_mainShader);
         base.OnOpenGlDeinit(gl);
     }
 
     protected override void OnOpenGlLost()
     {
-        _iZoomFactor.Stop();
+        _iTime.Stop();
         _gl.DeleteShader(_mainShader);
         base.OnOpenGlLost();
     }

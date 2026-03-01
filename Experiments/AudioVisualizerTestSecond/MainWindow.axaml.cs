@@ -84,6 +84,8 @@ public partial class MainWindow : Window
                 GlRenderer.CurrentMidrangeAvgNormLevel = (normalizedMag <= noiseGateMidrange) ? 0 : normalizedMag;
                 GlRenderer.CurrentRmsLevel = levelAnalyzer.Rms;
             };
+
+            GlRenderer.TotalDurationSeconds = player.Duration;
             
 
             while (player.State == PlaybackState.Playing)

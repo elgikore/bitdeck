@@ -1,16 +1,17 @@
 #version 330 core
 
-uniform float iZoomFactor;
+uniform float iTime;
 uniform vec2 iResolution;
 uniform float iRms;
 uniform float iMidrange;
+uniform float iTotalDuration;
 
 const vec2 START_POS = vec2(-0.5, 0.0);
 const vec2 END_POS = vec2(-0.11973195199391995, 0.6495285294768962);
 const float TRANSITION_SECONDS = 10.0;
 const float MIN_ITER = 30;
 const float ITER_LIMIT = 2000;
-const float LOG_2_ZOOM_CONSTANT = (ITER_LIMIT - MIN_ITER) / 17.0; 
+const float LOG_2_ZOOM_CONSTANT = (ITER_LIMIT - MIN_ITER) / 16.0; 
 const float PI = 3.14159265359;
 
 //vec3 palette( float t ) {
@@ -48,11 +49,17 @@ float atan2(vec2 theta) {
 
 void main()
 {
-    float magnification = (iResolution.y / 3.0) * pow(2.0, iZoomFactor);
-    float invMagnification = 1.0 / magnification;
-    int maxIterations = int(floor(50 + (LOG_2_ZOOM_CONSTANT * iZoomFactor)));
+    float zoomDurationFactor = mix(0.0, 1.0, iTime / iTotalDuration);
+    float zoomFactor = (zoomDurationFactor < 0.5) ? \
+            mix(0.0, 16.0, smoothstep(0.0, 0.5, zoomDurationFactor)) : \
+            mix(16.0, 0.0, smoothstep(0.5, 1.0, zoomDurationFactor));
     
-    float coordInterpolationFactor = smoothstep(0.0, 4.0, iZoomFactor);
+    
+    float magnification = (iResolution.y / 3.0) * pow(2.0, zoomFactor);
+    float invMagnification = 1.0 / magnification;
+    int maxIterations = int(floor(50 + (LOG_2_ZOOM_CONSTANT * zoomFactor)));
+    
+    float coordInterpolationFactor = smoothstep(0.0, 4.0, zoomFactor);
     vec2 currCoords = mix(START_POS, END_POS, coordInterpolationFactor);
 
     float im = ((gl_FragCoord.y - (iResolution.y / 2.0)) * -invMagnification) + currCoords.y;
