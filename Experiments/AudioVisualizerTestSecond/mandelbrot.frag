@@ -10,14 +10,24 @@ const vec2 START_POS_MANDELBROT = vec2(-0.5, 0.0);
 const vec2 START_POS_JULIA = vec2(0.0, 0.0);
 
 //const vec2 END_POS = vec2(-0.11973195199391995, 0.6495285294768962);
-//const vec2 END_POS = vec2(-0.7329251850304637, -0.2161912471140397);
-const vec2 END_POS = vec2(-0.6964746125319, -0.356793628703);
+const vec2 END_POS = vec2(-0.7329251850304637, -0.2161912471140397);
+//const vec2 END_POS = vec2(-0.6964746125319, -0.356793628703);
 
 const float MIN_ITER = 150;
 const float ITER_LIMIT = 2000;
 const float PI = 3.14159265359;
 const float START_MORPH = 0.49;
 const float END_MORPH = 0.51;
+
+// https://dev.thi.ng/gradients/
+vec3 cyclingRainbow(float normIteration) {
+    const vec3 A = vec3(0.180, 0.180, 0.180);
+    const vec3 B = vec3(1.5, 1.5, 1.5);
+    const vec3 C = vec3(2.0, 2.0, 2.0);
+    const vec3 D = vec3(-0.672, -0.338, -0.005);
+
+    return A + B * cos(2 * PI * (C * normIteration + D));
+}
 
 
 // out vec4 color instead of layout(location = 0) out vec4 color because Avalonia doesn't support it
@@ -43,7 +53,7 @@ void main()
     float im = ((gl_FragCoord.y - (iResolution.y / 2.0)) * -invMagnification) + currCoords.y;
     float re = ((gl_FragCoord.x - (iResolution.x / 2.0)) * invMagnification) + currCoords.x;
     
-    float escapeRadius = 2.0 + iMidrange;
+    float escapeRadius = 2.0 + (2.0 * iMidrange);
 
     vec2 z0Mandelbrot = vec2(0.0, 0.0);
     vec2 z0Julia = vec2(re, im);
@@ -59,7 +69,8 @@ void main()
         c = cMandelbrot;
     } else if (zoomDurationFactor >= START_MORPH && zoomDurationFactor < END_MORPH){
         // Animating z is very flickery so we only animate c and some "practical effects"
-        float cTransition = smoothstep(START_MORPH, END_MORPH, zoomDurationFactor);
+        // 0.50 instead of END_MORPH so that it can hold the flash for a bit longer
+        float cTransition = smoothstep(START_MORPH, 0.50, zoomDurationFactor);
         toWhiteFlash = vec4(cTransition);
         
         c = mix(cMandelbrot, cJulia, cTransition);
@@ -90,10 +101,9 @@ void main()
 
         z = vec2(updatedZRe, updatedZIm);
     }
-
-    const float VERY_DARK_GRAY_NORM = 20.0 / 255.0;
-    float normIterations = VERY_DARK_GRAY_NORM + (float(i) / float(maxIterations));    
-    vec3 iterationColor = (i == maxIterations) ? vec3(0.0, 0.0, 0.0) : vec3(normIterations, normIterations, normIterations);
+    
+    float normIterations = float(i) / float(maxIterations);    
+    vec3 iterationColor = (i == maxIterations) ? vec3(0.0, 0.0, 0.0) : cyclingRainbow(normIterations);
 
     vec4 finalColor = clamp(vec4(iterationColor, smoothstep(0.0, 0.01, iRms)) + toWhiteFlash, 0.0, 1.0);
     
