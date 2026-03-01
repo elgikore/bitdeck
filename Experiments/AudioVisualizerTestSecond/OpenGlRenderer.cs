@@ -29,7 +29,6 @@ public class OpenGlRenderer : OpenGlControlBase
     private float _prevMidrangeAvgNormLevel;
     private float _prevRmsLevel;
     private int _iTotalDurationLocation;
-    private float _totalDurationSeconds;
 
     protected override unsafe void OnOpenGlInit(GlInterface gl)
     {

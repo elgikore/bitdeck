@@ -24,7 +24,7 @@ public partial class MainWindow : Window
     {
         await Task.Run(() =>
         {
-            string audioPath = Path.GetFullPath("../../../../../../lol2.mp3");
+            string audioPath = Path.GetFullPath("../../../../../../lol.mp3");
                 
             using var engine = new MiniAudioEngine();
             var audioFormat = new AudioFormat() { Channels = 2, Format = SampleFormat.S16, SampleRate = 48000 };
