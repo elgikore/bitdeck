@@ -13,8 +13,11 @@ const vec2 START_POS_MANDELBROT = vec2(-0.5, 0.0);
 const vec2 START_POS_JULIA = vec2(0.0, 0.0);
 
 //const vec2 END_POS = vec2(-0.11973195199391995, 0.6495285294768962);
-const vec2 END_POS = vec2(-0.7329251850304637, -0.2161912471140397);
+//const vec2 END_POS = vec2(-0.7329251850304637, -0.2161912471140397);
 //const vec2 END_POS = vec2(-0.6964746125319, -0.356793628703);
+//const vec2 END_POS = vec2(-0.76006598207706, -0.08049577394589);
+//const vec2 END_POS = vec2(-0.76290645735314, -0.08273390579021);
+const vec2 END_POS = vec2(-0.03347354159771, -0.77327276891843);
 
 const float MIN_ITER = 200;
 const float ITER_LIMIT = 2000;
@@ -107,6 +110,7 @@ void main()
     vec2 cMandelbrot = vec2(re, im);
     vec2 cJulia = END_POS;
     vec4 toWhiteFlash = vec4(0.0);
+    float cTransition = 0.0;
     
     vec2 z;
     vec2 c;
@@ -117,15 +121,13 @@ void main()
     } else if (zoomDurationFactor >= START_MORPH && zoomDurationFactor < END_MORPH){
         // Animating z is very flickery so we only animate c and some "practical effects"
         // 0.50 instead of END_MORPH so that it can hold the flash for a bit longer
-        float cTransition = smoothstep(START_MORPH, 0.50, zoomDurationFactor);
-        toWhiteFlash = vec4(dmgColorPaletteFromIdx(3), mix(0.0, 1.0, cTransition));
+        cTransition = smoothstep(START_MORPH, 0.50, zoomDurationFactor);
         
         c = mix(cMandelbrot, cJulia, cTransition);
     } else {
         // Fade out to Julia at first
         float morphDuration = END_MORPH - START_MORPH;
-        float cTransition = mix(1.0, 0.0, smoothstep(END_MORPH, END_MORPH + morphDuration, zoomDurationFactor));
-        toWhiteFlash = vec4(dmgColorPaletteFromIdx(3), mix(0.0, 1.0, cTransition));
+        cTransition = mix(1.0, 0.0, smoothstep(END_MORPH, END_MORPH + morphDuration, zoomDurationFactor));
         
         z = z0Julia;
         c = cJulia;
@@ -150,7 +152,7 @@ void main()
     }
     
     vec3 iterationColor = cyclingDmgColor(i, maxIterations, gl_FragCoord.xy);
-    vec4 finalColor = clamp(vec4(iterationColor, smoothstep(0.0, 0.01, iRms)) + toWhiteFlash, 0.0, 1.0);
+    vec4 finalColor = mix(vec4(iterationColor, smoothstep(0.0, 0.01, iRms)), vec4(dmgColorPaletteFromIdx(3), 1.0), cTransition);
     
     color = finalColor;
 }
