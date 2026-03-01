@@ -16,22 +16,23 @@ const vec2 END_POS = vec2(-0.7329251850304637, -0.2161912471140397);
 const float MIN_ITER = 200;
 const float ITER_LIMIT = 2000;
 const float PI = 3.14159265359;
-const float START_MORPH = 0.49;
-const float END_MORPH = 0.51;
+const float START_MORPH = 0.495;
+const float END_MORPH = 0.505;
 
 // https://dev.thi.ng/gradients/
 vec3 cyclingGrayscaleRainbow(int iter, int maxIter) {
-    const vec3 A = vec3(0.100, 0.100, 0.100);
-    const vec3 B = vec3(1.5, 1.5, 1.5);
+    const vec3 A = vec3(0.28, 0.28, 0.28);
+    const vec3 B = vec3(0.633, 0.633, 0.633);
     const vec3 C = vec3(2.0, 2.0, 2.0);
-    const vec3 D = vec3(-0.672, -0.338, -0.005);
+    const vec3 D = vec3(-0.672, -0.338, 0.0);
     const vec3 GRAYSCALE_CONST = vec3(0.299, 0.587, 0.114);
-    const float VERY_DARK_GRAY = 20.0 / 255.0; // So that it doesn't fall to inner color
+    const float VERY_DARK_GRAY = 30.0 / 255.0; // So that it doesn't fall to inner color
+    const float VERY_LIGHT_GRAY = 240.0 / 255.0; // So that it isn't too bright
 
     float normIteration = float(iter) / float(maxIter);
-    vec3 cycler = vec3(iTime);
+    vec3 cycler = vec3(cos(iTime * 0.8));
     vec3 colored = A + B * cos(2 * PI * (C * normIteration + D) + cycler);
-    float grayscale = max(VERY_DARK_GRAY, dot(colored, GRAYSCALE_CONST));
+    float grayscale = clamp(dot(colored, GRAYSCALE_CONST), VERY_DARK_GRAY, VERY_LIGHT_GRAY);
     
     return (iter == maxIter) ? vec3(0.0) : vec3(grayscale);
 }
