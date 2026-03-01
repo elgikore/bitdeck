@@ -10,10 +10,11 @@ const vec2 START_POS_MANDELBROT = vec2(-0.5, 0.0);
 const vec2 START_POS_JULIA = vec2(0.0, 0.0);
 
 //const vec2 END_POS = vec2(-0.11973195199391995, 0.6495285294768962);
-const vec2 END_POS = vec2(-0.7329251850304637, -0.2161912471140397);
-const float MIN_ITER = 30;
+//const vec2 END_POS = vec2(-0.7329251850304637, -0.2161912471140397);
+const vec2 END_POS = vec2(-0.6964746125319, -0.356793628703);
+
+const float MIN_ITER = 150;
 const float ITER_LIMIT = 2000;
-const float LOG_2_ZOOM_CONSTANT = (ITER_LIMIT - MIN_ITER) / 16.0; 
 const float PI = 3.14159265359;
 const float START_MORPH = 0.49;
 const float END_MORPH = 0.51;
@@ -32,7 +33,7 @@ void main()
     
     float magnification = (iResolution.y / 3.0) * pow(2.0, zoomFactor);
     float invMagnification = 1.0 / magnification;
-    int maxIterations = int(floor(50 + (LOG_2_ZOOM_CONSTANT * zoomFactor)));
+    int maxIterations = int(floor(mix(MIN_ITER, ITER_LIMIT, smoothstep(0.0, 16.0, zoomFactor))));
     
     float coordInterpolationFactor = smoothstep(0.0, 4.0, zoomFactor);
     vec2 currCoords = (zoomDurationFactor < 0.5) ? \
