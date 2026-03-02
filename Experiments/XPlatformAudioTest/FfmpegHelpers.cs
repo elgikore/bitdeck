@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 
-namespace NAudioTest;
+namespace XPlatformAudioTest;
 
 public static class FfmpegHelpers
 {
@@ -18,7 +18,14 @@ public static class FfmpegHelpers
             CreateNoWindow = true
         };
         
+        using var ffprobe = new Process();
+        ffprobe.StartInfo = ffprobeArgs;
+        ffprobe.Start();
         
-        return JsonSerializer.Deserialize<JsonElement>(File.ReadAllText(fileLocation));
+        var outputJson = JsonSerializer.Deserialize<JsonElement>(ffprobe.StandardOutput.ReadToEnd());
+        
+        ffprobe.Kill();
+        
+        return outputJson;
     }
 }
