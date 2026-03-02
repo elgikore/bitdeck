@@ -1,31 +1,14 @@
-﻿﻿// See https://aka.ms/new-console-template for more information
+﻿// See https://aka.ms/new-console-template for more information
 
 using System.Diagnostics;
-using SoundFlow.Abstracts;
 using SoundFlow.Backends.MiniAudio;
 using SoundFlow.Components;
 using SoundFlow.Enums;
-using SoundFlow.Interfaces;
 using SoundFlow.Providers;
 using SoundFlow.Structs;
 
 
-string audioPath = Path.GetFullPath("../../../../../../input3.mp3");
-
-// using var reader = new WaveFileReader(audioPath);
-
-
-// Console.WriteLine(audioPath);
-
-// var config = new AudioConfig
-// {
-//     SampleRate = 48000,
-//     Channels = 2,
-//     BufferSize = 512
-// };
-//
-// OwnaudioNet.Initialize(config);
-// OwnaudioNet.Start();
+string audioPath = Path.GetFullPath("../../../../../../lol2.mp3");
 
 var ffmpeg = new Process
 {
@@ -34,6 +17,7 @@ var ffmpeg = new Process
         FileName = "ffmpeg",
         Arguments = $"-i \"{audioPath}\" -c:a pcm_f32le -f f32le -fflags nobuffer -flags low_delay -",
         RedirectStandardOutput = true,
+        RedirectStandardInput = true,
         RedirectStandardError = false,
         UseShellExecute = false,
         CreateNoWindow = true
@@ -46,6 +30,7 @@ var ffmpegStdout = ffmpeg.StandardOutput.BaseStream;
 
 // 1. Initialize the engine context.
 using var engine = new MiniAudioEngine();
+
 
 // 2. Define the audio format for playback.
 var format = new AudioFormat
@@ -68,78 +53,26 @@ playbackDevice.MasterMixer.AddComponent(player);
 
 // 6. Start the device to begin the audio stream.
 playbackDevice.Start();
-player.AddAnalyzer(new TestDsp(format));
 
 // 7. Start the player.
 player.Play();
 
-Console.ReadLine();
+while (player.State == PlaybackState.Playing)
+{
+    Console.WriteLine(TimeSpan.FromSeconds(player.Time).ToString(@"mm\:ss\.fff"));
+    Task.Delay(1000).Wait();
+
+    if (TimeSpan.FromSeconds(player.Time).ToString(@"mm\:ss\.fff") ==
+        TimeSpan.FromSeconds(126.513938).ToString(@"mm\:ss\.fff")) // Assuming we got the time from ffprobe
+    {
+        try { ffmpeg.StandardInput.Write('q'); }
+        catch (IOException) { } // Suppress broken pipe, we safely quit using 'q'.
+        finally { ffmpeg.Kill(); }
+        
+        break;
+    }
+}
 
 // 8. Stop the device, which also stops the audio stream.
 playbackDevice.Stop();
 
-public class TestDsp(AudioFormat format, IVisualizer? visualizer = null) : AudioAnalyzer(format, visualizer)
-{
-    protected override void Analyze(ReadOnlySpan<float> buffer, int channels)
-    {
-        Console.WriteLine($"Buffer length: {buffer.Length}, Channels: {channels}");
-    }
-}
-
-
-
-
-
-
-
-
-
-// // var nice = new WaveFileReader(ffmpegStdout);
-// //
-// // nice.
-//
-// // OwnaudioNet.
-//
-// byte[] buffer = new byte[4096 * config.Channels * sizeof(float)];
-// int read;
-//
-// while ((read = ffmpegStdout.Read(buffer, 0, buffer.Length)) > 0)
-// {
-//     var bufferAsFloat = MemoryMarshal.Cast<byte, float>(buffer.AsSpan(0, read));
-//     OwnaudioNet.Send(bufferAsFloat);
-//     
-//     await Task.Delay(TimeSpan.FromSeconds((float)read / (config.SampleRate * config.Channels * sizeof(float))));
-// }
-//
-// OwnaudioNet.Shutdown();
-
-// Console.ReadLine();
-//
-// dyanmicSource.Stop();
-// dyanmicSource.Dispose();
-//
-// OwnaudioNet.Shutdown();
-
-// AudioDecoderFactory.Create()
-
-// audioEngine.Start();
-//
-// int samplesRead;
-//
-// while ((samplesRead = reader.Read(buffer, 0, buffer.Length)) > 0)
-// {
-//     Console.WriteLine($"Samples read: {samplesRead}");
-//     
-//     var bufferAsShort = MemoryMarshal.Cast<byte, short>(buffer);
-//
-//     for (int i = 0; i < bufferAsShort.Length; i++)
-//     {
-//         bufferAsFloat[i] = bufferAsShort[i] / 32768f;
-//     }
-//     
-//     
-//     audioEngine.Send(bufferAsFloat);
-// }
-//
-// audioEngine.Stop();
-// audioEngine.Dispose();
