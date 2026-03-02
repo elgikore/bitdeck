@@ -21,10 +21,11 @@ public static class FfmpegHelpers
         using var ffprobe = new Process();
         ffprobe.StartInfo = ffprobeArgs;
         ffprobe.Start();
-        
+
+        string ffprobeStdout = ffprobe.StandardOutput.ReadToEnd();
         if (ffprobe.ExitCode != 0) throw new Exception($"ffprobe exited with code {ffprobe.ExitCode}!");
         
-        var outputJson = JsonSerializer.Deserialize<JsonElement>(ffprobe.StandardOutput.ReadToEnd());
+        var outputJson = JsonSerializer.Deserialize<JsonElement>(ffprobeStdout);
         
         ffprobe.Kill();
         
