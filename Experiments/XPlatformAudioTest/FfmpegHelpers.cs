@@ -22,6 +22,8 @@ public static class FfmpegHelpers
         ffprobe.StartInfo = ffprobeArgs;
         ffprobe.Start();
         
+        if (ffprobe.ExitCode != 0) throw new Exception($"ffprobe exited with code {ffprobe.ExitCode}!");
+        
         var outputJson = JsonSerializer.Deserialize<JsonElement>(ffprobe.StandardOutput.ReadToEnd());
         
         ffprobe.Kill();
