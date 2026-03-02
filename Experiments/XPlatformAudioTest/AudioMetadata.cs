@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace XPlatformAudioTest;
@@ -17,21 +18,11 @@ public record AudioMetadata
     // This record class is treated as a Context Pattern
     // No one can create this record other than AudioMetadata.Parse()
     #region PrivateConstructor
-    private AudioMetadata(string fileLocation, string title, string artist, string albumName, string albumArtLocation, 
-        string year, uint sampleRate, uint channelCount, TimeSpan durationSeconds)
-    {
-        FileLocation = fileLocation;
-        Title = title;
-        Artist = artist;
-        AlbumName = albumName;
-        AlbumArtLocation = albumArtLocation;
-        Year = year;
-        SampleRate = sampleRate;
-        ChannelCount = channelCount;
-        DurationSeconds = durationSeconds;
-    }
+    private AudioMetadata() { }
+    
     #endregion
 
+    [SuppressMessage("ReSharper", "JoinDeclarationAndInitializer")]
     public static AudioMetadata Parse(string fileLocation)
     {
         fileLocation = FileHelpers.ResolveToAbsolutePathAndCheck(fileLocation);
@@ -40,11 +31,13 @@ public record AudioMetadata
         string title = Path.GetFileNameWithoutExtension(fileLocation);
         string artist = "Unknown Artist";
         string albumName = Path.GetFileNameWithoutExtension(fileLocation);
+        string? albumArtLocation = null;
         uint year = (uint)File.GetLastWriteTime(fileLocation).Year;
         uint sampleRate;
         uint channelCount;
         TimeSpan durationSeconds;
         
+        // Parse
         var outputFfprobeJson = FfmpegHelpers.FfprobeAudio(fileLocation);
         
         // Main tree
@@ -82,8 +75,23 @@ public record AudioMetadata
         // Primary stream
         // This app will support popular major audio files only, so treat them as assumed
         // There shouldn't be any errors here because there is a guard for the "stream" variable
-        channelCount = primaryStream.GetProperty("channels").GetUInt32(); 
+        channelCount = primaryStream.GetProperty("channels").GetUInt32();
+        sampleRate = primaryStream.GetProperty("sampleRate").GetUInt32();
+        durationSeconds = TimeSpan.FromSeconds(double.Parse(primaryStream.GetProperty("duration").GetString()!));
         
-        return null!;
+        // Album art extraction
+        
+        return new AudioMetadata()
+        {
+            FileLocation = fileLocation,
+            Title = title,
+            Artist = artist,
+            AlbumName = albumName,
+            AlbumArtLocation = albumArtLocation,
+            Year = year,
+            SampleRate = sampleRate,
+            ChannelCount = channelCount,
+            DurationSeconds = durationSeconds
+        };
     }
 }
