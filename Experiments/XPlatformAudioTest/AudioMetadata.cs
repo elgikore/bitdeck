@@ -1,6 +1,6 @@
 namespace NAudioTest;
 
-public record SongMetadata
+public record AudioMetadata
 {
     public required string FileLocation { get; init; }
     public required string Title { get; init; }
