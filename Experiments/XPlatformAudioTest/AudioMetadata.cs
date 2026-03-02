@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Text.Json;
 
 namespace XPlatformAudioTest;
 
@@ -80,6 +81,26 @@ public record AudioMetadata
         durationSeconds = TimeSpan.FromSeconds(double.Parse(primaryStream.GetProperty("duration").GetString()!));
         
         // Album art extraction
+        // Check if it exists
+        bool doesAlbumArtExist = false;
+        
+        foreach (var stream in streams.EnumerateArray())
+        {
+            if (!stream.TryGetProperty("codec_type", out var codecType) || 
+                !stream.TryGetProperty("disposition", out var disposition)) continue;
+            
+            if (!disposition.TryGetProperty("attached_pic", out var attachedPicVal)) continue;
+            
+            if (codecType.GetString()! != "video" || attachedPicVal.GetInt32() != 1) continue;
+            
+            doesAlbumArtExist = true;
+            break;
+        }
+
+        if (doesAlbumArtExist)
+        {
+            
+        }
         
         return new AudioMetadata()
         {
