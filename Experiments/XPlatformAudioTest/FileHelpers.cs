@@ -1,4 +1,4 @@
-namespace NAudioTest;
+namespace XPlatformAudioTest;
 
 public static class FileHelpers
 {
