@@ -32,9 +32,7 @@ public record AudioMetadata
 
     public static AudioMetadata Parse(string fileLocation)
     {
-        fileLocation = Path.GetFullPath(fileLocation);
-        
-        if (!File.Exists(fileLocation)) throw new FileNotFoundException("File not found", fileLocation);
+        fileLocation = FileHelpers.ResolveToAbsolutePathAndCheck(fileLocation);
         
         return null!;
     }
