@@ -28,6 +28,7 @@ public record AudioMetadata
     {
         fileLocation = FileHelpers.ResolveToAbsolutePathAndCheck(fileLocation);
         
+        
         // Defaults
         string title = Path.GetFileNameWithoutExtension(fileLocation);
         string artist = "Unknown Artist";
@@ -38,8 +39,10 @@ public record AudioMetadata
         uint channelCount;
         TimeSpan durationSeconds;
         
+        
         // Parse
         var outputFfprobeJson = FfmpegHelpers.FfprobeAudio(fileLocation);
+        
         
         // Main tree
         if (!outputFfprobeJson.TryGetProperty("format", out var format) ||
@@ -50,6 +53,7 @@ public record AudioMetadata
         }
         
         var primaryStream = streams[0];
+        
         
         // Tags
         if (format.TryGetProperty("tags", out var tags))
@@ -73,6 +77,7 @@ public record AudioMetadata
             }
         }
         
+        
         // Primary stream
         // This app will support popular major audio files only, so treat them as assumed
         // There shouldn't be any errors here because there is a guard for the "stream" variable
@@ -80,26 +85,46 @@ public record AudioMetadata
         sampleRate = primaryStream.GetProperty("sampleRate").GetUInt32();
         durationSeconds = TimeSpan.FromSeconds(double.Parse(primaryStream.GetProperty("duration").GetString()!));
         
-        // Album art extraction
-        // Check if it exists
-        bool doesAlbumArtExist = false;
         
-        foreach (var stream in streams.EnumerateArray())
+        // Album art extraction
+        // Check if it exists on temp folder first
+        bool doesAlbumArtExist = false;
+        string tempPath = Path.GetTempPath();
+        string albumArtName = Path.GetFileNameWithoutExtension(fileLocation) + "_album_art";
+        
+        string? searchResult = Directory.EnumerateFiles(tempPath, albumArtLocation + ".*")
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .FirstOrDefault();
+        
+        
+        // If found, use the cached file
+        if (searchResult != null)
         {
-            if (!stream.TryGetProperty("codec_type", out var codecType) || 
-                !stream.TryGetProperty("disposition", out var disposition)) continue;
-            
-            if (!disposition.TryGetProperty("attached_pic", out var attachedPicVal)) continue;
-            
-            if (codecType.GetString()! != "video" || attachedPicVal.GetInt32() != 1) continue;
-            
             doesAlbumArtExist = true;
-            break;
+            // albumArtName 
+        }
+        
+        // If not on temp folder, extract from file
+        else
+        {
+            foreach (var stream in streams.EnumerateArray())
+            {
+                if (!stream.TryGetProperty("codec_type", out var codecType) || 
+                    !stream.TryGetProperty("disposition", out var disposition)) continue;
+            
+                if (!disposition.TryGetProperty("attached_pic", out var attachedPicVal)) continue;
+            
+                if (codecType.GetString()! != "video" || attachedPicVal.GetInt32() != 1) continue;
+            
+                doesAlbumArtExist = true;
+                break;
+            }
         }
 
+        // If found (from cache or manual extraction), assign the path
         if (doesAlbumArtExist)
         {
-            
+            albumArtLocation = Path.Combine(tempPath, albumArtName);
         }
         
         return new AudioMetadata()
