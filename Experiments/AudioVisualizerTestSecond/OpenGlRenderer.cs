@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Controls;
@@ -35,6 +36,8 @@ public class OpenGlRenderer : OpenGlControlBase
         base.OnOpenGlInit(gl);
 
         _gl = GL.GetApi(gl.GetProcAddress);
+
+        Console.WriteLine(Marshal.PtrToStringUTF8((IntPtr)_gl.GetString(StringName.Version)));
 
         uint vao = 0; // Need because Avalonia doesn't provide a default VAO unlike GLFW
         _gl.GenVertexArrays(1, &vao); 
