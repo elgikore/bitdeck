@@ -1,8 +1,7 @@
 #version 400 core
-#extension GL_ARB_gpu_shader_fp64 : require  
+#extension GL_ARB_gpu_shader_fp64 : require
 
-// out dvec4 color instead of layout(location = 0) out dvec4 color because Avalonia doesn't support it
-out vec4 color;
+layout(location = 0) out vec4 color;
 
 uniform float iTime;
 uniform vec2 iResolution;

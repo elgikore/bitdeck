@@ -30,6 +30,11 @@ public class OpenGlRenderer : OpenGlControlBase
     private float _prevMidrangeAvgNormLevel;
     private float _prevRmsLevel;
     private int _iTotalDurationLocation;
+    private uint _fbo;
+    private uint _fbTexture;
+    private uint _screenShader;
+    private int _screenTexLocation;
+    private uint _vao;
 
     protected override unsafe void OnOpenGlInit(GlInterface gl)
     {
@@ -42,13 +47,14 @@ public class OpenGlRenderer : OpenGlControlBase
         uint vao = 0; // Need because Avalonia doesn't provide a default VAO unlike GLFW
         _gl.GenVertexArrays(1, &vao); 
         _gl.BindVertexArray(vao);
+        _vao = vao;
 
         float[] vertices =
         [
-            -1, -1, // 0
-            1, -1,  // 1
-            1, 1,   // 2
-            -1, 1   // 3
+            -1, -1,  0, 0,           // 0
+            1, -1,   1, 0,           // 1
+            1, 1,    1, 1,           // 2
+            -1, 1,   0, 1            // 3
         ];
 
         uint[] quadIndices =
@@ -80,18 +86,65 @@ public class OpenGlRenderer : OpenGlControlBase
         
         GlCheck.Invoke(_gl, () => _gl.EnableVertexAttribArray(0));
         GlCheck.Invoke(_gl, () => _gl.VertexAttribPointer(0, 2, GLEnum.Float, 
-            false, 2 * sizeof(float), 0));
-        GlCheck.Invoke(_gl, () => _gl.Viewport(0, 0, (uint)Bounds.Width, (uint)Bounds.Height)); // Need because Avalonia doesn't provide it unlike GLFW
+            false, 4 * sizeof(float), 0));
+        
+        GlCheck.Invoke(_gl, () => _gl.EnableVertexAttribArray(1));
+        GlCheck.Invoke(_gl, () => _gl.VertexAttribPointer(1, 2, GLEnum.Float, 
+            false, 4 * sizeof(float), 2 * sizeof(float)));
+
+        uint fbo = 0;
+        _gl.GenFramebuffers(1, &fbo);
+        _gl.BindFramebuffer(GLEnum.Framebuffer, fbo);
+        _fbo = fbo;
+
+        uint fbTexture = 0;
+        _gl.GenTextures(1, &fbTexture);
+        _gl.BindTexture(GLEnum.Texture2D, fbTexture);
+        _gl.TexImage2D(GLEnum.Texture2D, 0, InternalFormat.Rgb, 256, 256, 0, 
+            GLEnum.Rgb, GLEnum.UnsignedByte, null);
+        
+
+        #pragma warning disable CS9193 // Argument should be a variable because it is passed to a 'ref readonly' parameter
+        _gl.TexParameterI(GLEnum.Texture2D, GLEnum.TextureMinFilter, (int)GLEnum.Nearest);
+        _gl.TexParameterI(GLEnum.Texture2D, GLEnum.TextureMagFilter, (int)GLEnum.Nearest);
+        _gl.TexParameterI(GLEnum.Texture2D, GLEnum.TextureWrapS, (int)GLEnum.ClampToEdge);
+        _gl.TexParameterI(GLEnum.Texture2D, GLEnum.TextureWrapT, (int)GLEnum.ClampToEdge);
+        #pragma warning restore CS9193 // Argument should be a variable because it is passed to a 'ref readonly' parameter
+
+        _fbTexture = fbTexture;
+
+        uint rbo = 0;
+        _gl.GenRenderbuffers(1, &rbo);
+        _gl.BindRenderbuffer(GLEnum.Renderbuffer, rbo);
+        _gl.RenderbufferStorage(GLEnum.Renderbuffer, GLEnum.DepthComponent, 256, 256);
+        _gl.FramebufferRenderbuffer(GLEnum.Framebuffer, GLEnum.DepthAttachment, GLEnum.Renderbuffer, rbo);
+        
+        // Absolutely needed or it won't render
+        // https://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
+        _gl.FramebufferTexture(GLEnum.Framebuffer, GLEnum.ColorAttachment0, fbTexture, 0);
+
+        var fboStatus = _gl.CheckFramebufferStatus(GLEnum.Framebuffer);
+
+        if ((int)fboStatus != (int)GLEnum.FramebufferComplete) throw new GlException($"Framebuffer incomplete! ({fboStatus})");
+        Console.WriteLine(fboStatus);
+        
+        
+        
+        
+        GlCheck.Invoke(_gl, () => _gl.Viewport(0, 0, 256, 256)); // Need because Avalonia doesn't provide it unlike GLFW
 
         string vertexShader = File.ReadAllText(Path.GetFullPath("../../../vertexShader.vert"));
         string fragShader = File.ReadAllText(Path.GetFullPath("../../../mandelbrot.frag"));
+        string screenShader = File.ReadAllText(Path.GetFullPath("../../../screen.frag"));
         
         _mainShader = CreateShader(ref vertexShader, ref fragShader);
+        _screenShader = CreateShader(ref vertexShader, ref screenShader);
+        
         GlCheck.Invoke(_gl, () => _gl.UseProgram(_mainShader));
         
         // iResolution
         _iResolutionLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iResolution"));
-        GlCheck.Invoke(_gl, () => _gl.Uniform2(_iResolutionLocation, (float)Bounds.Width, (float)Bounds.Height));
+        GlCheck.Invoke(_gl, () => _gl.Uniform2(_iResolutionLocation, 256f, 256f));
         
         // iTime
         _iTimeLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iTime"));
@@ -108,13 +161,29 @@ public class OpenGlRenderer : OpenGlControlBase
         // iTotalDuration
         _iTotalDurationLocation = GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_mainShader, "iTotalDuration"));
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTotalDurationLocation, TotalDurationSeconds));
+        
+        
+        GlCheck.Invoke(_gl, () => _gl.UseProgram(_screenShader));
+        _screenTexLocation =  GlCheck.Invoke(_gl, () => _gl.GetUniformLocation(_screenShader, "screenTex"));
+        GlCheck.Invoke(_gl, () => _gl.Uniform1(_screenTexLocation, 0));
+        
+        
     }
 
     protected override unsafe void OnOpenGlRender(GlInterface gl, int fb)
     {
         float smoothedRms;
         float smoothMidrangeAvgNorm;
-        GlCheck.Invoke(_gl, () => _gl.Clear(ClearBufferMask.ColorBufferBit));
+        
+        
+        _gl.BindFramebuffer(GLEnum.Framebuffer, _fbo);
+        _gl.Viewport(0, 0, 256, 256);
+        GlCheck.Invoke(_gl, () => _gl.UseProgram(_mainShader));
+        _gl.ClearColor(0f, 0f, 1f, 1f);
+        GlCheck.Invoke(_gl, () => _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit));
+        _gl.Enable(GLEnum.DepthTest);
+        
+        
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTotalDurationLocation, TotalDurationSeconds));
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iTimeLocation, (float)_iTime.Elapsed.TotalSeconds)); // Need because it changes over time
         GlCheck.Invoke(_gl, () => _gl.DrawElements(GLEnum.Triangles, 6, GLEnum.UnsignedInt, null));
@@ -153,6 +222,25 @@ public class OpenGlRenderer : OpenGlControlBase
         smoothMidrangeAvgNorm = Smoothing(_prevMidrangeAvgNormLevel, CurrentMidrangeAvgNormLevel, 0.35f);
         GlCheck.Invoke(_gl, () => _gl.Uniform1(_iMidrangeNormAvgLocation, smoothMidrangeAvgNorm));
         _prevMidrangeAvgNormLevel = smoothMidrangeAvgNorm;
+        
+        
+        // IMPORTANT! NOT 0! Avalonia has its default ID -- or else total black screen!
+        // This is one of the most infuriating bugs I have ever encountered, and it is Avalonia-specific
+        _gl.BindFramebuffer(GLEnum.Framebuffer, (uint)fb); 
+        
+        _gl.Viewport(0, 0, (uint)Width, (uint)Height);
+        _gl.ClearColor(0f, 1f, 0f, 1f);
+        GlCheck.Invoke(_gl, () => _gl.Clear(ClearBufferMask.ColorBufferBit));
+        
+        
+        GlCheck.Invoke(_gl, () => _gl.UseProgram(_screenShader));
+        _gl.Uniform1(_screenTexLocation, 0f);
+        _gl.BindVertexArray(_vao);
+        _gl.Disable(GLEnum.DepthTest);
+        _gl.ActiveTexture(GLEnum.Texture0);
+        _gl.BindTexture(GLEnum.Texture2D, _fbTexture);
+        
+        GlCheck.Invoke(_gl, () => _gl.DrawElements(GLEnum.Triangles, 6, GLEnum.UnsignedInt, null));
         
         Dispatcher.UIThread.Post(RequestNextFrameRendering); // To make it loop
     }
