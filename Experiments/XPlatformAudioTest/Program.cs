@@ -1,14 +1,16 @@
 ﻿﻿// See https://aka.ms/new-console-template for more information
 
 using System.Diagnostics;
+using SoundFlow.Abstracts;
 using SoundFlow.Backends.MiniAudio;
 using SoundFlow.Components;
 using SoundFlow.Enums;
+using SoundFlow.Interfaces;
 using SoundFlow.Providers;
 using SoundFlow.Structs;
 
 
-string audioPath = Path.GetFullPath("../../../../../../input2.m4a");
+string audioPath = Path.GetFullPath("../../../../../../input3.mp3");
 
 // using var reader = new WaveFileReader(audioPath);
 
@@ -49,7 +51,7 @@ using var engine = new MiniAudioEngine();
 var format = new AudioFormat
 {
     Channels = 2,
-    SampleRate = 96000,
+    SampleRate = 48000,
     Format = SampleFormat.F32
 };
 
@@ -66,17 +68,23 @@ playbackDevice.MasterMixer.AddComponent(player);
 
 // 6. Start the device to begin the audio stream.
 playbackDevice.Start();
+player.AddAnalyzer(new TestDsp(format));
 
 // 7. Start the player.
 player.Play();
 
-Console.WriteLine($"Playing audio on '{playbackDevice.Info?.Name}'... Press any key to stop.");
-Console.ReadKey();
+Console.ReadLine();
 
 // 8. Stop the device, which also stops the audio stream.
 playbackDevice.Stop();
 
-
+public class TestDsp(AudioFormat format, IVisualizer? visualizer = null) : AudioAnalyzer(format, visualizer)
+{
+    protected override void Analyze(ReadOnlySpan<float> buffer, int channels)
+    {
+        Console.WriteLine($"Buffer length: {buffer.Length}, Channels: {channels}");
+    }
+}
 
 
 
