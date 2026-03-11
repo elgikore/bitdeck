@@ -324,6 +324,10 @@ public class OpenGlRenderer : OpenGlControlBase
     {
         _iTime.Stop();
         _gl.DeleteShader(_mainShader);
+        _gl.DeleteShader(_screenShader);
+        _gl.DeleteTexture(_fbTexture);
+        _gl.DeleteFramebuffer(_fbo);
+        _gl.DeleteVertexArray(_vao);
         base.OnOpenGlDeinit(gl);
     }
 
@@ -331,6 +335,10 @@ public class OpenGlRenderer : OpenGlControlBase
     {
         _iTime.Stop();
         _gl.DeleteShader(_mainShader);
+        _gl.DeleteShader(_screenShader);
+        _gl.DeleteTexture(_fbTexture);
+        _gl.DeleteFramebuffer(_fbo);
+        _gl.DeleteVertexArray(_vao);
         base.OnOpenGlLost();
     }
 }
