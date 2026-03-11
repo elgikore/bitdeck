@@ -88,8 +88,8 @@ void main()
 {
     float zoomDurationFactor = mix(0.0, 1.0, iTime / iTotalDuration);
     float zoomFactor = (zoomDurationFactor < 0.5) ? \
-            mix(0.0, 40.0, smoothstep(0.0, 0.5, zoomDurationFactor)) : \
-            mix(40.0, 0.0, smoothstep(0.5, 1.0, zoomDurationFactor));
+            mix(0.0, 45.0, smoothstep(0.0, 0.5, zoomDurationFactor)) : \
+            mix(45.0, 0.0, smoothstep(0.5, 1.0, zoomDurationFactor));
     
     float magnification = (iResolution.y / 3.0) * pow(2.0, zoomFactor);
     float invMagnification = 1.0 / magnification;
@@ -103,7 +103,7 @@ void main()
     double im = ((gl_FragCoord.y - (iResolution.y / 2.0)) * -invMagnification) + currCoords.y;
     double re = ((gl_FragCoord.x - (iResolution.x / 2.0)) * invMagnification) + currCoords.x;
     
-    double escapeRadius = 4.0 + (4.0 * iMidrange);
+    float escapeRadius = 4.0 + (4.0 * iMidrange);
 
     dvec2 z0Mandelbrot = dvec2(0.0, 0.0);
     dvec2 z0Julia = dvec2(re, im);
@@ -139,7 +139,7 @@ void main()
     for (i = 0; i < maxIterations; i++) {
         magnitude = dot(z, z);
 
-        if (magnitude > escapeRadius) {
+        if (float(magnitude) > escapeRadius) {
             i++;
             break;
         }
