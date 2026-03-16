@@ -2,9 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:audioVisualizerTestSecond="clr-namespace:AudioVisualizerTestSecond"
+        xmlns:audioVisualizerTestSecond1="clr-namespace:AudioVisualizerTestSecond"
+        xmlns:audioVisualizerTestSecond="clr-namespace:BitDeck.Experiments.AudioVisualizerTestSecond"
         mc:Ignorable="d" Width="512" Height="562"
-        x:Class="AudioVisualizerTestSecond.MainWindow"
+        x:Class="BitDeck.Experiments.AudioVisualizerTestSecond.AudioVisualizerTestSecond"
         Title="AudioVisualizerTestSecond">
     <Grid RowDefinitions="*, 50">
         <audioVisualizerTestSecond:OpenGlRenderer Name="GlRenderer" Width="512" Height="512"/>

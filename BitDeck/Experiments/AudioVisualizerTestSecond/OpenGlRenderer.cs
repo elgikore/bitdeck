@@ -3,12 +3,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using AudioVisualizerTestSecond;
 using Avalonia.OpenGL;
 using Avalonia.OpenGL.Controls;
 using Avalonia.Threading;
 using Silk.NET.OpenGL;
 
-namespace AudioVisualizerTestSecond;
+namespace BitDeck.Experiments.AudioVisualizerTestSecond;
 
 public class OpenGlRenderer : OpenGlControlBase
 {
@@ -133,9 +134,9 @@ public class OpenGlRenderer : OpenGlControlBase
         
         GlCheck.Invoke(_gl, () => _gl.Viewport(0, 0, 256, 256)); // Need because Avalonia doesn't provide it unlike GLFW
 
-        string vertexShader = File.ReadAllText(Path.GetFullPath("../../../vertexShader.vert"));
-        string fragShader = File.ReadAllText(Path.GetFullPath("../../../mandelbrot.frag"));
-        string screenShader = File.ReadAllText(Path.GetFullPath("../../../screen.frag"));
+        string vertexShader = File.ReadAllText(Path.GetFullPath("../../../Experiments/AudioVisualizerTestSecond/vertexShader.vert"));
+        string fragShader = File.ReadAllText(Path.GetFullPath("../../../Experiments/AudioVisualizerTestSecond/mandelbrot.frag"));
+        string screenShader = File.ReadAllText(Path.GetFullPath("../../../Experiments/AudioVisualizerTestSecond/screen.frag"));
         
         _mainShader = CreateShader(ref vertexShader, ref fragShader);
         _screenShader = CreateShader(ref vertexShader, ref screenShader);

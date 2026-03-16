@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using System;
 
-namespace AudioVisualizerTest;
+namespace BitDeck;
 
 class Program
 {
@@ -16,6 +16,10 @@ class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            .With(new Win32PlatformOptions
+            {
+                RenderingMode = [Win32RenderingMode.Wgl, Win32RenderingMode.Software]
+            })
             .WithInterFont()
             .LogToTrace();
 }

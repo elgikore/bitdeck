@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
-namespace AudioVisualizerTest;
+namespace BitDeck;
 
 public partial class App : Application
 {
@@ -15,7 +15,11 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            #if DEBUG
+                desktop.MainWindow = new Experiments.SoundFlowTest.SoundFlowTest();
+            #else
+                desktop.MainWindow = new MainWindow();
+            #endif
         }
 
         base.OnFrameworkInitializationCompleted();
