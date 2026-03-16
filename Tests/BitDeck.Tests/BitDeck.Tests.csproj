@@ -17,7 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\BitDeck.csproj" />
+      <ProjectReference Include="..\..\BitDeck\BitDeck.csproj" />
     </ItemGroup>
 
 </Project>

@@ -33,17 +33,11 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Reference Include="MSTest.TestFramework">
-        <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\mstest.testframework\4.0.1\lib\net9.0\MSTest.TestFramework.dll</HintPath>
-      </Reference>
       <Reference Include="Ownaudio.Core">
         <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\ownaudiosharp\2.5.4\lib\net9.0\Ownaudio.Core.dll</HintPath>
       </Reference>
       <Reference Include="OwnaudioNET">
         <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\ownaudiosharp\2.5.4\lib\net9.0\OwnaudioNET.dll</HintPath>
-      </Reference>
-      <Reference Include="OxyPlot.Avalonia">
-        <HintPath>C:\Users\windowsnotavailable\.nuget\packages\oxyplot.avalonia\2.1.0\lib\netstandard2.0\OxyPlot.Avalonia.dll</HintPath>
       </Reference>
       <Reference Include="Silk.NET.Core">
         <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\silk.net.core\2.23.0\lib\net6.0\Silk.NET.Core.dll</HintPath>

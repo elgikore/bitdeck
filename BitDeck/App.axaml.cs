@@ -16,7 +16,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             #if DEBUG
-                desktop.MainWindow = new Experiments.AudioVisualizerTestSecond.AudioVisualizerTestSecond();
+                desktop.MainWindow = new Experiments.SoundFlowTest.SoundFlowTest();
             #else
                 desktop.MainWindow = new MainWindow();
             #endif
