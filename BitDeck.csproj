@@ -39,6 +39,15 @@
       <Reference Include="OxyPlot.Avalonia">
         <HintPath>C:\Users\windowsnotavailable\.nuget\packages\oxyplot.avalonia\2.1.0\lib\netstandard2.0\OxyPlot.Avalonia.dll</HintPath>
       </Reference>
+      <Reference Include="Silk.NET.Core">
+        <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\silk.net.core\2.23.0\lib\net6.0\Silk.NET.Core.dll</HintPath>
+      </Reference>
+      <Reference Include="Silk.NET.OpenGL">
+        <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\silk.net.opengl\2.23.0\lib\net5.0\Silk.NET.OpenGL.dll</HintPath>
+      </Reference>
+      <Reference Include="SoundFlow">
+        <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\soundflow\1.4.0\lib\net8.0\SoundFlow.dll</HintPath>
+      </Reference>
     </ItemGroup>
 
     <ItemGroup>
