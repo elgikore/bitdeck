@@ -4,3 +4,10 @@ obj/
 riderModule.iml
 /_ReSharper.Caches/
 .idea/
+
+# audio files
+*.mp3
+*.flac
+*.wav
+*.aac
+*.ogg
