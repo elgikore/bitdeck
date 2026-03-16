@@ -1,3 +1,8 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -328,7 +333,7 @@ public partial class AudioVisualizerTest : Window
 
     private void PlayButton_Click(object? sender, RoutedEventArgs e)
     {
-        string audioPath = Path.GetFullPath("../../../../../../input3.mp3");
+        string audioPath = Path.GetFullPath("../../../../../input3.mp3");
         
         using var mediaMeta = new Media(_libVlcInstance, audioPath);
         mediaMeta.Parse().Wait();

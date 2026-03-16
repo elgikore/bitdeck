@@ -20,8 +20,11 @@
         </PackageReference>
         <PackageReference Include="LibVLCSharp" Version="3.9.5" />
         <PackageReference Include="OwnAudioSharp" Version="2.5.4" />
-        <PackageReference Include="ScottPlot" Version="5.1.57" />
-        <PackageReference Include="ScottPlot.Avalonia" Version="5.1.57" />
+        <PackageReference Include="ScottPlot" Version="5.0.55" />
+        <PackageReference Include="ScottPlot.Avalonia" Version="5.0.55" />
+        <PackageReference Include="Silk.NET.Core" Version="2.23.0" />
+        <PackageReference Include="Silk.NET.OpenGL" Version="2.23.0" />
+        <PackageReference Include="SoundFlow" Version="1.4.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -30,6 +33,9 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Reference Include="MSTest.TestFramework">
+        <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\mstest.testframework\4.0.1\lib\net9.0\MSTest.TestFramework.dll</HintPath>
+      </Reference>
       <Reference Include="Ownaudio.Core">
         <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\ownaudiosharp\2.5.4\lib\net9.0\Ownaudio.Core.dll</HintPath>
       </Reference>
@@ -48,11 +54,5 @@
       <Reference Include="SoundFlow">
         <HintPath>..\..\..\..\..\home\archnotavailable\.nuget\packages\soundflow\1.4.0\lib\net8.0\SoundFlow.dll</HintPath>
       </Reference>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Compile Update="Experiments\XPlatformAudioTest\Program.cs">
-        <Link>Experiments\NAudioTest\Program.cs</Link>
-      </Compile>
     </ItemGroup>
 </Project>

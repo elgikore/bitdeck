@@ -2,10 +2,8 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using SoundFlow.Backends.MiniAudio;
 using SoundFlow.Components;
 using SoundFlow.Enums;
@@ -13,7 +11,7 @@ using SoundFlow.Providers;
 using SoundFlow.Structs;
 using SoundFlow.Visualization;
 
-namespace AudioVisualizerTestSecond;
+namespace BitDeck.Experiments.AudioVisualizerTestSecond;
 
 public partial class AudioVisualizerTestSecond : Window
 {
@@ -26,7 +24,7 @@ public partial class AudioVisualizerTestSecond : Window
     {
         await Task.Run(() =>
         {
-            string audioPath = Path.GetFullPath("../../../../../../lol.mp3");
+            string audioPath = Path.GetFullPath("../../../../../lol.mp3");
                 
             using var engine = new MiniAudioEngine();
             var audioFormat = new AudioFormat() { Channels = 2, Format = SampleFormat.S16, SampleRate = 48000 };

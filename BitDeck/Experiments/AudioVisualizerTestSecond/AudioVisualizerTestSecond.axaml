@@ -3,11 +3,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:audioVisualizerTestSecond1="clr-namespace:AudioVisualizerTestSecond"
+        xmlns:audioVisualizerTestSecond="clr-namespace:BitDeck.Experiments.AudioVisualizerTestSecond"
         mc:Ignorable="d" Width="512" Height="562"
-        x:Class="AudioVisualizerTestSecond.AudioVisualizerTestSecond"
+        x:Class="BitDeck.Experiments.AudioVisualizerTestSecond.AudioVisualizerTestSecond"
         Title="AudioVisualizerTestSecond">
     <Grid RowDefinitions="*, 50">
-        <audioVisualizerTestSecond1:OpenGlRenderer Name="GlRenderer" Width="512" Height="512"/>
+        <audioVisualizerTestSecond:OpenGlRenderer Name="GlRenderer" Width="512" Height="512"/>
         <Button Grid.Row="1" Click="Button_OnClick" HorizontalAlignment="Center" VerticalAlignment="Center">
             Play Visualizer
         </Button>

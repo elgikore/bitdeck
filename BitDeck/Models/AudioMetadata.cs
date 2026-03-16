@@ -1,8 +1,10 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Text.Json;
+using System.IO;
+using System.Linq;
 
-namespace XPlatformAudioTest;
+namespace BitDeck.Models;
 
 public record AudioMetadata
 {
